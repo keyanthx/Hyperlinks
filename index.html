@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Adobe Fonts kit: narkiss-asaf-variable (body font). External host —
+     if blocked/offline, the body falls back to self-hosted Verily Serif Mono. -->
+<link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css">
+<!-- html2canvas powers the dissolve snapshots.
+     If the CDN is unreachable (offline / file://), everything still works:
+     dissolves fall back to a plain CSS opacity fade. -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+/* Self-hosted fonts (fonts/) — they load offline and in browsers that
+   block external font hosts.
+   - Verily Serif Mono: body fallback if the Adobe Fonts kit is blocked —
+     a monospace drawn to resemble Times New Roman
+     (license: fonts/verily-license.txt).
+   - Overpass Mono: hover material-shift, captions, footer. */
+@font-face {
+  font-family: 'Verily Serif Mono';
+  src: url('fonts/verily-serif-mono.otf') format('opentype');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Overpass Mono';
+  src: url('fonts/overpass-mono.woff2') format('woff2');
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+/* ============================================================
+   1. Reset / page chrome
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
+  font-variation-settings: 'wght' 400, 'MONO' 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#canvas {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  transition: filter 0.3s ease;
+}
+
+/* While the documentation modal is open, blur the canvas behind it
+   (echoes the fade-out dissolve). Footer/tuner/modal are outside #canvas
+   and stay sharp. */
+body.modal-open #canvas { filter: blur(4px); }
+
+/* ============================================================
+   2. Fragment states
+   ============================================================ */
+.fragment {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.fragment.shown { opacity: 1; }
+
+/* CSS-only fallback fade (used when the canvas dissolve is unavailable).
+   Stays cursor-interactive so it can still be dragged while disappearing. */
+.fragment.fading {
+  opacity: 0;
+  transition: opacity 30s ease;
+}
+
+/* Overlay canvas that hosts the pixel-dissolve animation */
+.fx {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ============================================================
+   3. Typography / fragment layout
+   ============================================================ */
+.fragment.text {
+  width: min(380px, 86vw);
+}
+
+.fragment-caption {
+  font-size: 10px;
+  color: grey;
+  font-family: "Overpass Mono", monospace;
+  margin-bottom: 10px;
+  text-transform: lowercase;
+}
+
+.fragment.text p {
+  font-size: clamp(12px, 1.4vw, 14px);
+  line-height: 1.6;
+  color: #111;
+  margin-bottom: 0.75em;
+}
+
+.fragment.image,
+.fragment.video,
+.fragment.iframe { width: min(360px, 86vw); }
+
+/* Fixed media heights so collision measurement is correct before load */
+.media {
+  display: block;
+  width: 100%;
+  background: #e8e6e0;
+}
+
+img.media,
+video.media {
+  height: 220px;
+  object-fit: contain;
+}
+
+iframe.media {
+  height: 260px;
+  border: 0;
+}
+
+/* Transparent shield over an iframe so the cursor-drag works on it (iframes
+   otherwise swallow mouse events). Clicking it steps aside (.down) to let the
+   embed be used; it re-arms once the cursor returns to the page. */
+.media-wrap { position: relative; }
+.iframe-shield { position: absolute; inset: 0; z-index: 2; background: transparent; cursor: grab; }
+.iframe-shield.down { pointer-events: none; }
+
+.note {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #555;
+  line-height: 1.55;
+}
+
+.note + .note { margin-top: 6px; }
+
+/* Each word is wrapped in a span so it can be restyled individually
+   by the hover material-shift effect */
+.word {
+  display: inline;   /* inline so native text selection is one flush band */
+}
+
+/* Hover material shift: words near the cursor swap from the body font
+   to Overpass Mono. The font-size is set per word (inline) so the mono
+   face fits the word's locked width (no reflow, no overflow).
+   Color unchanged so links stay distinct. */
+.word.mat {
+  display: inline-block;   /* only while shifted, so the locked width applies */
+  font-family: "Overpass Mono", monospace;
+  white-space: nowrap;   /* never break a hyphenated word inside its locked width */
+}
+
+/* ============================================================
+   4. Links — animated underline sweep, persistent visited state
+   ============================================================ */
+a.link, a.peek-res, .peek-img, .peek-note {
+  color: #0000EE;                 /* :link  — unvisited */
+  text-decoration: none;
+  cursor: pointer;
+  /* Multi-line underline: a gradient drawn on every line fragment (so wrapped
+     links underline fully), swept in via background-size. currentColor so it
+     tracks the link's colour in every state. */
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 100% 100%;       /* anchored right while retracting */
+  background-size: 0% 1.5px;
+  transition: background-size 0.3s ease-in-out;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+a.link.visited { color: #551A8B; }   /* :visited — set in JS once clicked */
+
+/* Links whose target fragment doesn't exist yet — greyish blue (authoring aid). */
+a.link.unwritten { color: #6b7f99; }
+
+/* Hover, and while the target is on the canvas: full underline (sweeps in from
+   the left; only background-size transitions, so the position flip is unseen). */
+/* Underline-sweep only for things that navigate (real links + [↗] sources).
+   Peek markers (image / notes) stay blue but never underline. */
+a.link:hover,
+a.peek-res:hover,
+a.link.on-canvas:not(.dead) {
+  background-position: 0 100%;
+  background-size: 100% 1.5px;
+}
+.peek-note { cursor: help; }
+.peek-img  { cursor: zoom-in; }
+
+a.link:not(.dead):active { color: #FF0000; }   /* :active — while pressed */
+
+/* Link rot: a link whose target has died. Greyed and struck through;
+   clicking it yields a 404 (handled in JS) instead of spawning. */
+a.link.dead {
+  color: #999;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  cursor: not-allowed;
+  background-image: none;   /* no underline on dead links (strikethrough only) */
+}
+
+/* 404 toast shown when a dead link is clicked */
+.toast404 {
+  position: fixed;
+  z-index: 6000;
+  pointer-events: none;
+  font-family: "Overpass Mono", monospace;
+  font-size: 11px;
+  color: #b00;
+  white-space: nowrap;
+  animation: toast404 0.9s ease-out forwards;
+}
+@keyframes toast404 {
+  0%   { opacity: 0; transform: translateY(0); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+
+/* ============================================================
+   Inline "peek" tooltips — NOT navigation (distinct from a.link).
+   .peek-img: wavy underline → image card (pixel-materializes).
+   .peek-res: footnote bracket mark → resource name/URL preview.
+   ============================================================ */
+/* Image peek = an image-icon marker after the word. Blue like the links
+   (see the .peek-img colour rule above) but it never underlines and never
+   navigates — it only reveals the image card on hover. */
+.peek-ico { vertical-align: -1px; }
+/* .peek-res ([↗] source link) is styled like a.link above (blue + underline
+   sweep); it just isn't given the .link class, so the canvas click handler
+   doesn't hijack it and the URL opens normally. */
+
+.peek-card, .peek-tip, .peek-note-card {
+  position: fixed;
+  z-index: 6500;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .18s ease;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+}
+.peek-card.show, .peek-tip.show, .peek-note-card.show { opacity: 1; }
+.peek-card { padding: 6px; }
+.peek-card canvas { display: block; }
+.peek-cap {
+  margin-top: 5px;
+  font-family: "Overpass Mono", monospace;
+  font-size: 10px;
+  color: grey;
+  max-width: 220px;
+}
+.peek-tip {
+  padding: 6px 9px;
+  max-width: 260px;
+  font-family: "Overpass Mono", monospace;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.peek-tip .peek-name { color: #111; }
+.peek-tip .peek-url  { color: grey; display: block; margin-top: 2px; word-break: break-all; }
+
+/* Note peeks: definition / quote / code cards (pixel-materialized). */
+.peek-note-card { max-width: 280px; padding: 10px 12px; font-size: 13px; line-height: 1.5; color: #111; }
+.peek-note-card.quote { font-style: italic; border-left: 2px solid #ccc; padding-left: 12px; }
+.peek-note-card.code {
+  font-family: "Overpass Mono", monospace;
+  font-size: 12px;
+  background: #f4f3ef;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ============================================================
+   5. Footer — always visible
+   ============================================================ */
+footer {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-family: "Overpass Mono", monospace;
+  color: #999;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 100;
+}
+
+/* The footer is non-interactive except for its toggles. */
+#sound-toggle, #fx-toggle, #colophon-test {
+  pointer-events: auto;
+  cursor: pointer;
+  color: #777;
+}
+#sound-toggle:hover, #fx-toggle:hover, #colophon-test:hover { color: #111; }
+
+/* "Read the whole web" easter egg — a quiet line that flashes once you've
+   opened every fragment. */
+#colophon {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 8500;
+  pointer-events: none;
+  font-family: "Overpass Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: #111;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 10px 16px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+#colophon.show { opacity: 1; }
+
+/* Hidden easter egg: double-click "Hyperlinks" in the footer opens a small
+   session window. The title catches the dblclick but stays visually plain. */
+#hyperlinks-title {
+  pointer-events: auto;
+  user-select: none;
+}
+.stats-modal {
+  position: relative;
+  width: min(420px, 88vw);
+  max-height: 70vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  padding: 30px 32px;
+}
+/* The session window holds an SVG node-link graph of the whole fragment mesh:
+   directed edges (arrowheads), ghost nodes for missing targets, dead-end flag. */
+.stats-modal.graph { width: min(760px, 94vw); }
+#stats-graph {
+  display: block;
+  width: 100%;
+  height: 40vh;
+  margin: 6px 0 0;
+  touch-action: none;          /* let pointer-drag work on touch */
+}
+#stats-graph .gedge { stroke: #bbb; stroke-width: 1; }
+#stats-graph .gedge.followed { stroke: #111; stroke-width: 1.6; }
+#stats-graph .gedge.ghost { stroke: #d2d2d2; stroke-dasharray: 3 3; }
+#stats-graph .gnode { cursor: grab; }
+#stats-graph .gnode:active { cursor: grabbing; }
+#stats-graph .gnode rect { fill: #fff; stroke: #111; stroke-width: 1; }
+#stats-graph .gnode text {
+  font-family: "Overpass Mono", monospace;
+  font-size: 10px;
+  fill: #111;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+#stats-graph .gnode.visited rect { fill: #ececec; }
+#stats-graph .gnode.start rect { stroke-width: 1; }
+#stats-graph .gnode.start .ring { fill: none; stroke: #111; stroke-width: 1; }
+#stats-graph .gnode.deadend rect { stroke: #b00; }
+#stats-graph .gnode.deadend text { fill: #b00; }
+#stats-graph .gnode.ghost rect { fill: #fafafa; stroke: #cfcfcf; stroke-dasharray: 3 3; }
+#stats-graph .gnode.ghost text { fill: #aaa; font-style: italic; }
+#graph-legend {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-family: "Overpass Mono", monospace;
+  font-size: 11px;
+  color: grey;
+}
+#graph-legend b { font-weight: normal; }
+#graph-legend .lg-frag { color: #111; }
+#graph-legend .lg-ghost { color: #cfcfcf; }
+#graph-legend .lg-dead { color: #b00; }
+#graph-legend .lg-vis { color: #888; }
+#graph-legend .lg-arr { color: #111; }
+
+/* The reader's followed path, as an indented box-drawing tree: followed
+   fragments expand, unfollowed links show as "?". */
+#stats-path {
+  margin: 6px 0 0;
+  font-family: "Overpass Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #111;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* Footer text links — black, with the fragment links' animated underline sweep. */
+#doc-link, #legal-link, #credit-link {
+  pointer-events: auto;
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
+  color: #111;
+  text-decoration: none;
+}
+#doc-link::before, #legal-link::before, #credit-link::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background-color: currentColor;
+  bottom: -1px;
+  left: 0;
+  transform-origin: right;
+  transform: scaleX(0);
+  transition: transform 0.3s ease-in-out;
+}
+#doc-link:hover::before, #legal-link:hover::before, #credit-link:hover::before {
+  transform-origin: left;
+  transform: scaleX(1);
+}
+
+/* "Already on canvas" indicator: a small grow pulse (scales from centre).
+   Overrides the drag's inline transform only while it runs. */
+@keyframes pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(var(--pop-scale, 1.01)); }
+  100% { transform: scale(1); }
+}
+.fragment.pop {
+  animation: pop var(--pop-dur, 450ms) ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fragment.pop { animation: none; }
+}
+
+/* ============================================================
+   7. Drag-tuning panel (dev tool) — live sliders for the
+   cursor-drag physics. Remove this block + its JS to ship.
+   ============================================================ */
+#tuner {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 7000;
+  width: 214px;
+  padding: 8px 10px 10px;
+  font-family: "Overpass Mono", monospace;
+  font-size: 11px;
+  color: #333;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  backdrop-filter: blur(2px);
+  user-select: none;
+}
+#tuner .tuner-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #999;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+#tuner .tuner-reset {
+  cursor: pointer;
+  color: #0000EE;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#tuner.collapsed .tuner-body { display: none; }
+#tuner .row {
+  display: grid;
+  grid-template-columns: 74px 1fr 32px;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0;
+}
+#tuner label { color: #555; }
+#tuner input[type=range] { width: 100%; }
+#tuner .val { text-align: right; color: #111; }
+
+/* ============================================================
+   8. Modal windows (documentation, legal) — opened from the
+   footer. The canvas behind is blurred (body.modal-open #canvas)
+   and grayed by the overlay wash; footer + tuner stay sharp.
+   ============================================================ */
+.doc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  display: none;
+  place-items: center;
+  background: rgba(210, 210, 210, 0.4);
+}
+.doc-overlay.open { display: grid; }
+
+.doc-modal {
+  position: relative;
+  width: min(620px, 90vw);
+  max-height: 85vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  padding: 40px 44px;
+}
+
+.doc-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: 0;
+  outline: none;
+  background: none;
+  cursor: pointer;
+  font-family: "Overpass Mono", monospace;
+  font-size: 22px;
+  line-height: 1;
+  color: #111;
+  padding: 4px;
+}
+.doc-close:hover { color: #0000EE; }
+
+.doc-content h2 {
+  font-family: "Overpass Mono", monospace;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #999;
+  margin-bottom: 18px;
+}
+/* Match the fragment body text so the modals read like the fragments. */
+.doc-content p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #111;
+  margin-bottom: 0.75em;
+}
+.doc-content .fragment-caption { margin-top: 22px; }
+.doc-content .note { margin-bottom: 0.75em; }
+
+/* Image placeholder — same gray box as a fragment's .media. */
+.doc-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  margin: 4px 0 8px;
+  background: #e8e6e0;
+  color: #999;
+  font-family: "Overpass Mono", monospace;
+  font-size: 11px;
+  text-transform: lowercase;
+  letter-spacing: 0.05em;
+}
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<footer><span id="hyperlinks-title">Hyperlinks</span>. A project by Keyan Thanner, supervised by <a id="credit-link" href="https://www.ktell.de" target="_blank" rel="noopener">Jun. Prof. Katharina Köhler</a>. <span id="legal-link">See legals</span>. <span id="doc-link">See documentation</span>. · <span id="fx-toggle" title="hover interactions">✦ on</span> · <span id="sound-toggle">♪ off</span> · <span id="colophon-test" title="test the read-the-whole-web easter egg">[test]</span></footer>
+
+<div id="colophon" aria-hidden="true">you have followed every link — the entire mesh.</div>
+
+<div id="doc-overlay" class="doc-overlay" aria-hidden="true">
+  <div class="doc-modal" role="dialog" aria-modal="true" aria-label="Documentation">
+    <button class="doc-close" aria-label="Close documentation">×</button>
+    <div class="doc-content">
+      <h2>Documentation</h2>
+      <!-- Placeholder content — replace with the real documentation. -->
+
+      <div class="fragment-caption">about</div>
+      <p>Placeholder text. This documentation reuses the same visual language as the fragments: the serif body, the small monospace captions, and the cursor interactions. Move your cursor across this text and the words nearest the pointer reveal the machine type beneath the prose.</p>
+      <p>The whole window responds to the cursor the way a fragment does — a little weight, a little drift. Replace these paragraphs with the actual writing about the project, its concepts, and how to read it.</p>
+
+      <div class="fragment-caption">figure</div>
+      <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
+      <p class="note">A caption for the image placeholder. Captions behave like the notes under a fragment's media — they shift to monospace under the cursor too.</p>
+
+      <div class="fragment-caption">notes</div>
+      <p>Another placeholder block. Add as many text and image blocks as the documentation needs; everything here is already loaded with the page, not spawned on demand.</p>
+
+      <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
+      <p class="note">Second image placeholder with its own caption.</p>
+
+      <div class="fragment-caption">how to read it</div>
+      <p>Placeholder text for testing scroll. The hyperlink sits quietly inside a sentence, underlined and blue, waiting. Most of the time we do not think about it: we click and we move on. But the hyperlink is not just a feature of the web — it is the web's most fundamental idea.</p>
+      <p>Without it, there are only documents, floating separately, unreachable from one another. The link is what makes connection possible: one document pointing to another, across servers, across countries, across languages, without asking anyone's permission.</p>
+      <p>You do not need to apply to link to something. You do not need to own the content you are pointing to. You just link. That freedom is a radical idea, and it was built into the architecture of the web from the very beginning.</p>
+
+      <div class="fragment-caption">structure</div>
+      <p>The structure that emerges from billions of these connections is not a library, not a filing cabinet, not a tree with a root and branches — it is something stranger: a network without a centre. A mesh, not a tree.</p>
+      <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
+      <p class="note">Third image placeholder — a diagram would go here.</p>
+
+      <div class="fragment-caption">decay</div>
+      <p>A broken link is called link rot. Like organic matter, links decay over time. A page moves, a server goes offline, a company shuts down, a URL structure changes — and suddenly a connection that existed becomes a dead end.</p>
+      <p>The web's memory is shorter than we think. This is partly a technical problem, but it is also a structural one: the hyperlink points outward, but it receives no signal when the thing it points to disappears. There is no notification of death; the connection simply stops working.</p>
+
+      <div class="fragment-caption">platforms</div>
+      <p>Something changed. The web that exists today is not the web that was designed. For most people, most of the time, the web is three or four platforms — a search engine, a social network, a video service, a marketplace. These platforms are not the web; they are built on top of it.</p>
+      <p>A platform is, by definition, centralised. All content flows through one company's servers; all connections are mediated by one company's algorithms. The open web of interconnected documents has been replaced, for most users, by a curated stream you scroll through but do not truly navigate.</p>
+
+      <div class="fragment-caption">alternatives</div>
+      <p>There is still a small but persistent movement of people who maintain personal sites outside of platforms — the indie web, the small web. They use feeds instead of algorithms, link to each other directly, and write for readers rather than for engagement metrics.</p>
+      <p>It is a minority practice now, but it is a living memory of what the web was once like, and what it could still be: a space of genuine connection, built from individual choices to link.</p>
+      <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
+      <p class="note">Final image placeholder — end of the scroll test content.</p>
+
+      <div class="fragment-caption">colophon</div>
+      <p>End of placeholder documentation. Replace everything above with the real text and images. Scroll back up to confirm the hover material-shift stays aligned after scrolling.</p>
+    </div>
+  </div>
+</div>
+
+<div id="legal-overlay" class="doc-overlay" aria-hidden="true">
+  <div class="doc-modal" role="dialog" aria-modal="true" aria-label="Legal">
+    <button class="doc-close" aria-label="Close legal">×</button>
+    <div class="doc-content">
+      <h2>Legal</h2>
+      <!-- Placeholder legal text — replace with the real imprint / privacy notice. -->
+
+      <div class="fragment-caption">imprint</div>
+      <p>Placeholder imprint. Hyperlinks — a project by Keyan Thanner, supervised by Jun. Prof. Katharina Köhler. Replace this with the responsible person, address, and contact details required for the imprint.</p>
+      <p>Contact: placeholder@example.com. Replace with the actual contact address.</p>
+
+      <div class="fragment-caption">privacy</div>
+      <p>Placeholder privacy notice. This page is static and self-contained: fonts are hosted locally and there are no analytics, cookies, or third-party trackers. Replace this paragraph with the real privacy statement once finalised.</p>
+      <p>If any external content is embedded — for example a remote video or an embedded web page — note here what data those third parties may receive when you load it.</p>
+
+      <div class="fragment-caption">copyright</div>
+      <p>Placeholder copyright notice. © Keyan Thanner. All texts and images are placeholders until replaced. State here the licence and any attributions for third-party material.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden easter egg: double-click "Hyperlinks" in the footer. -->
+<div id="stats-overlay" class="doc-overlay" aria-hidden="true">
+  <div class="stats-modal" role="dialog" aria-modal="true" aria-label="Session">
+    <button class="doc-close" aria-label="Close">×</button>
+    <div class="doc-content">
+      <h2>session</h2>
+      <p id="stats-count"></p>
+      <div class="fragment-caption">the mesh</div>
+      <svg id="stats-graph" viewBox="0 0 760 460" preserveAspectRatio="xMidYMid meet" aria-label="Fragment graph"></svg>
+      <div id="graph-legend">
+        <span><b class="lg-frag">▢</b> fragment</span>
+        <span><b class="lg-ghost">▢</b> missing target</span>
+        <span><b class="lg-dead">▢</b> dead end</span>
+        <span><b class="lg-vis">▣</b> visited</span>
+        <span><b class="lg-arr">→</b> link direction</span>
+      </div>
+      <div class="fragment-caption">your path</div>
+      <pre id="stats-path"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   1. CONTENT MODEL
+   FRAGMENTS, keyed by id. Types: text | image | video | iframe.
+   - text:  html (paragraphs containing <a class="link" data-target data-from>)
+   - image: src (data-URI SVG), alt, notes[]
+   - video: src, poster, notes[]
+   - iframe: src, notes[]
+   notes[] entries are HTML strings and may contain .link anchors.
+   ============================================================ */
+const FRAGMENTS = {
+  // Entry point. The whole content is the user's essay, imported from the
+  // Obsidian vault (verbatim — typos preserved). [[wiki-links]] become canvas
+  // links; targets without a fragment yet 404 gracefully (see the click handler).
+  'tim-berners-lees-proposal': {
+    type: 'text',
+    html: `<p>In his 1989 proposal 'Information Management: A Proposal,' written during his work at CERN, Tim Berners-Lee developed the idea that would later become the World-Wide Web, or 'Web' for short. He describes his proposal as follows: "Firstly, it discusses the problem of information access at CERN. Then, it introduces the idea of linked information systems and compares them with less flexible ways of finding information."</p>
+<p>At the center of the proposal, and thus the Web, has always been hypertext, which made it possible to connect parts of a document and create connections within it using hyperlinks. The <a class="link" data-target="history-of-the-hyperlink" data-from="tim-berners-lees-proposal">history of the hyperlink</a> contains many ideas and was shaped by many people until it finally led to the development of the Web through Tim Berners-Lee.</p>
+<p>Already visible in the proposal is the idea of <a class="link" data-target="non-hierarchical-linking" data-from="tim-berners-lees-proposal">non-hierarchical linking</a>, the principle that any document could connect to any other, with no fixed order. This is especailly interesting, because it shows how his idea wasn't just about how to share information but also how Hyperlinks can work as a way to think and research</p>`
+  },
+
+  'the-visionaries-of-the-web': {
+    type: 'text',
+    html: `<p>The saying "We stand on shoulders of giants"<span class="peek-note" data-kind="quote">[”]<template class="peek-body">“If I have seen further it is by standing on the shoulders of Giants.” — Isaac Newton, 1675</template></span> holds very true for the web as we know it today. Without the work of many individuals in information management, the internet would look completely different from what we are used to today. The fundamental ideas of the web were primarily shaped by Vannevar Bush's <a class="link" data-target="memex" data-from="the-visionaries-of-the-web">Memex</a>; a device that represents a kind of analog personal computer with hyperlinks. Furthermore, <a class="link" data-target="douglas-engelbart" data-from="the-visionaries-of-the-web">Douglas Engelbart</a> significantly shaped the concept of the hyperlink, and he is also considered the forefather of the hyperlink. However, even before the World Wide Web, there were ideas for a similar web, most notably <a class="link" data-target="xanadu" data-from="the-visionaries-of-the-web">Xanadu</a>, which shared many things with the World Wide Web, but also envisioned some things completely differently. The invention of the web clearly demonstrates how the <a class="link" data-target="combination-of-ideas-brings-forth-new-ideas" data-from="the-visionaries-of-the-web">combination of ideas brings forth new ideas</a>.</p>`
+  },
+
+  'tim-berners-lee': {
+    type: 'text',
+    html: `<p>Tim Berners-Lee invented the World Wide Web. At his time as a programmer at CERN he built the first browser, the first server, and the language every page still uses, <a class="link" data-target="html" data-from="tim-berners-lee">HTML</a>. From the beginning, he worked on the Web not only as a programmer; he used information theories to make the ideas of <a class="link" data-target="open-data" data-from="tim-berners-lee">open data</a> and <a class="link" data-target="decentralization" data-from="tim-berners-lee">decentralization</a> the core of the Web. For this he was inspired by the work of <a class="link" data-target="the-visionaries-of-the-web" data-from="tim-berners-lee">The visionaries of the Web</a>. The core ideas of the web, a network that belongs to everyone, with no central gatekeeper, did not stay in the past: the same spirit still drives the <a class="link" data-target="fediverse" data-from="tim-berners-lee">Fediverse</a> today, built on open, shared <a class="link" data-target="protocols" data-from="tim-berners-lee">protocols</a> instead of private gates.</p>`
+  },
+
+  'html': {
+    type: 'text',
+    html: `<p>With the development of the web, <a class="link" data-target="tim-berners-lee" data-from="html">Tim Berners-Lee</a> developed a markup language that every site on the web uses, HTML (short for Hypertext Markup Language)<span class="peek-note" data-kind="definition">[?]<template class="peek-body">HTML — the standard markup language for web documents. It structures content with nested <em>elements</em>; the hyperlink is one of them.</template></span>. It is the skeleton of a web page. It defines the structure, the way a frame defines a house. It uses so called "elements" to define the website's content. As the name implies, Hyperlinks are at the core of HTML. To make a hyperlink, you simply use an <em>&lt;a href="..."&gt;</em> element<span class="peek-note" data-kind="code">[&lt;/&gt;]<template class="peek-body"><code>&lt;a href="https://example.com"&gt;link text&lt;/a&gt;</code></template></span>. It holds the address of the target. This can be a URL, but also a fragment within the same page (<em>#section</em>), an email (<em>mailto:</em>), a phone number (<em>tel:</em>), or a relative path to another file. Hyperlinks in HTML can be added not only to text, but also to images and basically any other element (buttons, whole blocks). That a hyperlink can be attached in so many ways shows how central it is to the web. At the core, Hyperlinks in HTML use <a class="link" data-target="non-hierarchical-linking" data-from="html">non-hierarchical linking</a>, so they can link to anything. Unlike <a class="link" data-target="xanadu" data-from="html">Xanadu</a>, these links work only in one direction. So the target doesn't know it's being linked to, which is also the reason for <a class="link" data-target="link-rot" data-from="html">link rot</a>.</p>`
+  },
+
+  'index': {
+    type: 'text',
+    html: `<p>Indexing makes information findable by connecting it together. This applies both to publishing, where an index points to the place of certain keywords, and to the web, where indexing makes pages findable in the first place.</p>
+<p>Search engines like Google build their index through <em>crawling</em>: automated programs follow links from page to page through the web's non-hierarchical linking, the way a reader would, and record everything they find. The result is a massive index: a searchable copy of the web. Only a page that has been crawled and indexed can be found at all.</p>
+<p>An index in a book works the same way — pointing from a keyword to the place where it can be found. It is, in a sense, a form of <a class="link" data-target="analog-linking" data-from="index">analog linking</a>: a hyperlink on paper.</p>`
+  },
+
+  'pagerank': {
+    type: 'text',
+    html: `<p>In 1996 Stanford students Larry Page<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ec/Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped%29.jpg" data-cap="Larry Page, European Parliament 2009. Stansfield PL / Wikimedia Commons, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Sergey Brin developed an Algorithmn, that would change how we move around the web and later, change the whole web. What they developed was PageRank<span class="peek-note" data-kind="definition">[?]<template class="peek-body">PageRank — Google's original ranking algorithm. It scores a page by the number and quality of other pages that link to it, treating each hyperlink as a vote.</template></span>, the Algorithmn that lead to and is used by Google. There were different Search-Engines before, like Yahoo, that used a manually <a class="link" data-target="index" data-from="pagerank">index</a> of Websites to later search for them. PageRank used an automatic approach, ranking the websites based on how often they are linked to; a method that was already invented by Eugene Garfield<a class="peek-res" href="https://doi.org/10.1126/science.122.3159.108" target="_blank" rel="noopener" data-label="Garfield, E. (1955). Citation Indexes for Science. Science, 122(3159).">[↗]</a> (called "SCI", short for "Science Citation Index") Instead of Citations, PageRank used Hyperlinks do determine how important a website is and also . And other than Yahoo, this method used <a class="link" data-target="non-hierarchical-linking" data-from="pagerank">non-hierarchical linking</a> as the basis, This worked really, really well. In fact, it worked so good,by the early 2000s, Google had become the dominant search engine. But it doesn't stop there. Google became one of the largest companies in the world. And with that power came a new pressure on the web. What followed was an <a class="link" data-target="adaptation-to-the-algorithmn" data-from="pagerank">Adaptation to the algorithmn</a>: websites restructuring themselves not for readers, but for Google's PageRank.</p>`
+  },
+
+  'adaptation-to-the-algorithmn': {
+    type: 'text',
+    html: `<p>The more social media use <a class="link" data-target="algorithmn-based-feeds" data-from="adaptation-to-the-algorithmn">algorithmn-based feeds</a> the more powerful become the algorithmns. This leads to a change in the content to suit the algorithmn better and therefore getting pushed by the algorithmn, getting more views and money. A current example is "Raigebait", a form of clickbait to gain more views and especially more interaction. Because interaction, even negative one, leads to more recommendations from the algorithmn.</p>
+<p>This adaptation isn't bound to social media, Google's algorithmn, <a class="link" data-target="pagerank" data-from="adaptation-to-the-algorithmn">PageRank</a>, lead to another way of adaption. This deveopment of the web to suit the algorithmn and getting higher ranked, also called SEO (Search Engine Optimization) <a class="link" data-target="i-miss-how-google-used-to-work" data-from="adaptation-to-the-algorithmn">I Miss How Google Used To Work</a> described. It's not just the Search Engine; Google started running ads. But not just on their own site; through their "AdSense" service, Google distributed ads on all kinds of websites. So Google began to rank websites higher if people stayed on them longer, because this meant more ads and more money for Google. Thus, sites started playing by Google's rules because they were dependent on Google's ranking system. If you couldn't be seen via Google, you were practically unfindable on the internet.</p>
+<p>This leads to creative boundaries, making it hard for many creatives to reach an audience trought these plattforms and bad in <a class="link" data-target="non-hierarchical-linking" data-from="adaptation-to-the-algorithmn">non-hierarchical linking</a> because the plattforms are hierarchical caused by their monopoly status.</p>`
+  },
+
+  'algorithmn-based-feeds': {
+    type: 'text',
+    html: `<p>The biggest problem with current social media platforms is their monetization. This relies on collecting personal data and displaying personalized advertising. Accordingly, platforms earn more money the longer you spend on them. To achieve this, algorithms are used whose sole purpose is to attract the most attention. The consequences of these algorithms are not just extreme content; the algorithms also work so well that, with TikTok, there are now platforms where you spend the vast majority of your time automatically watching content recommended by the algorithm.</p>
+<p>Especially the shift away from choosing your own content, for example by subscribing to YouTube channels, towards algorithmn based feeds, is important. It is getting less about human<a class="link" data-target="recommendations" data-from="algorithmn-based-feeds">recommendations</a>. How is this development towards <a class="link" data-target="dehumanization" data-from="algorithmn-based-feeds">dehumanization</a> changing the web? And can <a class="link" data-target="decentralized-social-media" data-from="algorithmn-based-feeds">decentralized social media</a> change it to the better?</p>
+<p>But it is not only that. The algorithm-based feed makes the algorithmns more powerful. Like with Google, the content on social media changes to be recommended more. Not by people, but by the algorithmn. This is what I call the <a class="link" data-target="adaptation-to-the-algorithmn" data-from="algorithmn-based-feeds">Adaptation to the algorithmn</a>.</p>`
+  },
+
+  'decentralized-social-media': {
+    type: 'text',
+    html: `<p>Decentralized social media (DSM) is social media that is <strong>not</strong> owned or controlled by a single company. Instead of one platform holding all your data, your account and your reach, DSM is built on shared, open <a class="link" data-target="protocols" data-from="decentralized-social-media">protocols</a>. Any platform that speaks the same protocol can join the network, and accounts on different platforms can communicate with each other.</p>
+<p>The same way you can use <a class="link" data-target="email" data-from="decentralized-social-media">Email</a> across different providers, you could share information on DSM across different plattforms which all share the same <a class="link" data-target="protocols" data-from="decentralized-social-media">protocols</a>. It does not matter whether your address is at one provider or another — they all interoperate.</p>
+<p>This is the opposite of today's mainstream social media, where you can usually only reach other accounts on the <em>same</em> platform. The underlying idea that makes this possible — <a class="link" data-target="decentralization" data-from="decentralized-social-media">Decentralization</a> — is described in its own text. The infrastructure that puts it into practice for social media is the <a class="link" data-target="fediverse" data-from="decentralized-social-media">Fediverse</a>.</p>`
+  },
+
+  'i-miss-how-google-used-to-work': {
+    type: 'iframe',
+    src: 'https://www.youtube-nocookie.com/embed/GvaOUFwXjf4?si=xAXjLgeVYHzufV7B',
+    allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+    notes: [
+      `Great video about how monopolies change the internet in ways they profit off of it. The idea behind the Original Google Algorithm wasn't new, rather a connection of different ideas, creating a new one.`
+    ]
+  }
+};
+
+/* ============================================================
+   2. TUNING CONSTANTS — single source of truth
+   ============================================================ */
+const MAX_ACTIVE    = 3;       // active fragments before the oldest dissolves
+const START_ID      = 'algorithmn-based-feeds';  // entry fragment
+
+const FADE_DELAY    = 3000;    // ms a fragment stays fully visible before dissolving
+const FADE_DURATION = 30000;   // ms the dissolve animation runs
+
+const GAP  = 30;               // minimum spacing between fragments
+const PAD  = 30;               // margin to the window edge
+const STEP = 20;               // grid pitch of candidate positions
+
+const STEPS       = 10;        // discrete dissolve stages over FADE_DURATION
+const MAX_BLOCK   = 3;         // CSS px: strongest mosaic block size (last stage)
+const MAX_BLUR    = 2.5;       // CSS px: strongest Gaussian pre-blur (last stage)
+const MIN_OPACITY = 0.05;      // opacity of the last dissolve stage
+
+const MATERIALIZE_DURATION = 900;  // ms the spawn (reverse-dissolve) animation runs
+
+// "Already on canvas" indicator: a small grow + a burst of black pixel particles.
+const POP_SCALE        = 1.005; // how much the fragment grows at the peak
+const POP_DURATION     = 450;   // ms of the grow-and-back
+const POP_PARTICLE_GAP = 35;    // px of border per emitted particle (smaller = more)
+const POP_FRICTION     = 0.8;   // per-frame velocity decay of the particles
+
+const ROT_CHANCE = 0.35;       // probability an inbound link rots when its target dies
+
+const RADIUS   = 100;          // hover lens radius in CSS px
+
+// Cursor-drag physics constants live in the "TWEAK ME" block at the very
+// bottom of this script, so they are easy to find and adjust.
+
+// Honour the OS "reduce motion" setting: skip materialize + cursor lean.
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============================================================
+   3. LIFECYCLE STATE
+   ============================================================ */
+let placed    = [];          // [{ id, x, y, w, h }] — occupied rects (incl. fading ones)
+let order     = [];          // appearance order
+let fadingSet = new Set();   // ids currently dissolving
+let dissolveStart = {};      // id -> performance.now() when its dissolve began
+let timers    = {};          // id -> setTimeout handle of the dissolve
+let fxCanvases = {};         // id -> overlay canvas of the pixel dissolve
+
+function active() {
+  return order.filter(id => !fadingSet.has(id));
+}
+
+/* ============================================================
+   4. LAYOUT / COLLISION PLACEMENT
+   ============================================================ */
+
+// Does the rect (x,y,w,h) — including GAP — overlap any occupied rect?
+function overlaps(x, y, w, h) {
+  return placed.some(r =>
+    x < r.x + r.w + GAP &&
+    x + w + GAP > r.x &&
+    y < r.y + r.h + GAP &&
+    y + h + GAP > r.y
+  );
+}
+
+// Find a free, random position for a w×h fragment.
+function findPosition(w, h) {
+  const maxX = window.innerWidth  - w - PAD;
+  const maxY = window.innerHeight - h - PAD;
+  if (maxX < PAD || maxY < PAD) return null;   // doesn't fit in the window
+
+  const candidates = [];
+  for (let y = PAD; y <= maxY; y += STEP)
+    for (let x = PAD; x <= maxX; x += STEP)
+      candidates.push({ x, y });
+
+  // Shuffle (Fisher–Yates) for a random arrangement
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  for (const c of candidates) {
+    if (!overlaps(c.x, c.y, w, h)) return c;
+  }
+  return null;
+}
+
+/* ============================================================
+   5. REMOVAL
+   ============================================================ */
+
+// Remove a fragment immediately and completely (DOM + state).
+// When `rot` is set (the fragment is dying, not just being re-spawned),
+// each live link still pointing at it has a chance to rot — link rot,
+// per-link: other links to the same target keep working.
+function removeFragment(id, { rot = false } = {}) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  if (fxCanvases[id]) { fxCanvases[id].remove(); delete fxCanvases[id]; }
+  placed = placed.filter(r => r.id !== id);
+  order  = order.filter(i => i !== id);
+  fadingSet.delete(id);
+  delete dissolveStart[id];
+  if (timers[id]) { clearTimeout(timers[id]); delete timers[id]; }
+
+  // This fragment is gone — clear the presence dot on links pointing at it.
+  document.querySelectorAll(`a.link[data-target="${id}"]`).forEach(a => a.classList.remove('on-canvas'));
+
+  if (rot) {
+    document.querySelectorAll(`a.link[data-target="${id}"]`).forEach(link => {
+      if (!link.classList.contains('dead') && Math.random() < ROT_CHANCE) {
+        link.classList.add('dead');
+        link.dataset.dead = '1';
+      }
+    });
+  }
+}
+
+// "404 — not found" toast near the cursor when a dead link is clicked.
+function show404(x, y) {
+  const t = document.createElement('div');
+  t.className = 'toast404';
+  t.textContent = '404 — not found';
+  t.style.left = (x + 10) + 'px';
+  t.style.top  = (y - 8) + 'px';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 900);
+}
+
+/* ============================================================
+   6. FADE-OUT DISSOLVE
+   ============================================================ */
+
+// Plain CSS opacity fade — fallback when no pixel capture is possible
+// (html2canvas missing, or the capture is tainted by cross-origin media).
+function cssFade(el, id) {
+  if (el) {
+    el.classList.remove('shown');
+    el.classList.add('fading');
+  }
+  dissolveStart[id] = performance.now();
+  timers[id] = setTimeout(() => removeFragment(id), FADE_DURATION);
+}
+
+// Start the dissolve: hold for FADE_DELAY (3s), then run mosaic, Gaussian
+// pre-blur and sinking opacity simultaneously over FADE_DURATION (30s).
+// The fragment's rect stays occupied until it is removed.
+function fadeOut(id) {
+  if (fadingSet.has(id)) return;
+  fadingSet.add(id);
+
+  timers[id] = setTimeout(() => {
+    const el = document.getElementById(id);
+    if (!el) { timers[id] = setTimeout(() => removeFragment(id, { rot: true }), FADE_DURATION); return; }
+
+    playDissolve();                  // soft static as the fragment begins to go
+    el.style.transform = '';         // drop any cursor lean so the overlay lines up
+    followState.delete(el);
+
+    // Freeze geometry before the element is hidden.
+    const cw = el.offsetWidth, ch = el.offsetHeight;
+    const left = el.offsetLeft, top = el.offsetTop;
+
+    // Reset any in-flight hover styles so the capture is clean.
+    el.querySelectorAll('.word').forEach(w => { w.classList.remove('mat'); w.style.width = ''; w.style.fontSize = ''; });
+
+    if (typeof html2canvas !== 'function') { cssFade(el, id); return; }
+
+    html2canvas(el, { backgroundColor: null, scale: 2, logging: false })
+      .then(src => {
+        if (!fadingSet.has(id)) return;        // already removed
+        // Hide the original instantly (the overlay takes over) but keep it
+        // pointer-interactive so it can still be dragged while dissolving.
+        el.style.transition = 'none';
+        el.style.opacity = '0';
+        requestAnimationFrame(() => { const e2 = document.getElementById(id); if (e2) e2.style.transition = ''; });
+        dissolveStart[id] = performance.now();
+        runPixelDissolve({ id, src, left, top, cw, ch });
+      })
+      .catch(() => cssFade(el, id));           // tainted canvas etc. -> CSS fallback
+
+    setTimeout(() => removeFragment(id, { rot: true }), FADE_DURATION);
+  }, FADE_DELAY);
+}
+
+// Build the overlay .fx canvas (+ reused scratch canvases) for a pixel
+// effect, registered under fxCanvases[id]. Returns its 2d context + scratch.
+function makeFx(id, left, top, cw, ch) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  const cvs = document.createElement('canvas');
+  cvs.className = 'fx';
+  cvs.width = cw * dpr; cvs.height = ch * dpr;
+  cvs.style.width = cw + 'px'; cvs.style.height = ch + 'px';
+  cvs.style.left = left + 'px';
+  cvs.style.top  = top + 'px';
+  const ctx = cvs.getContext('2d');
+  ctx.scale(dpr, dpr);
+  document.getElementById('canvas').appendChild(cvs);
+  fxCanvases[id] = cvs;
+
+  // Scratch canvases: one for the blur pre-pass, one for the mosaic downscale.
+  const blr = document.createElement('canvas'); blr.width = cw; blr.height = ch;
+  const tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = ch;
+  return {
+    ctx,
+    scratch: { blr, blrCtx: blr.getContext('2d'), tmp, tctx: tmp.getContext('2d') }
+  };
+}
+
+// One mosaic+blur+opacity stage. f: 0 = sharp, 1 = coarsest. The blur feeds
+// the mosaic; the final upscale is unsmoothed so the output blocks stay crisp.
+function drawPixelStage(ctx, src, scratch, cw, ch, f, opacity) {
+  const { blr, blrCtx, tmp, tctx } = scratch;
+  const block = 1 + f * (MAX_BLOCK - 1);
+  const blur  = f * MAX_BLUR;
+  const sw = Math.max(1, Math.ceil(cw / block));
+  const sh = Math.max(1, Math.ceil(ch / block));
+
+  blrCtx.clearRect(0, 0, cw, ch);
+  blrCtx.filter = blur > 0 ? `blur(${blur}px)` : 'none';
+  blrCtx.drawImage(src, 0, 0, cw, ch);
+  blrCtx.filter = 'none';
+
+  tctx.clearRect(0, 0, cw, ch);
+  tctx.imageSmoothingEnabled = true;
+  tctx.drawImage(blr, 0, 0, sw, sh);
+
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = opacity;
+  ctx.drawImage(tmp, 0, 0, sw, sh, 0, 0, sw * block, sh * block);
+  ctx.globalAlpha = 1;
+}
+
+// Dissolve: sharp+opaque -> coarse+faint over FADE_DURATION, in STEPS stages.
+function runPixelDissolve({ id, src, left, top, cw, ch }) {
+  const { ctx, scratch } = makeFx(id, left, top, cw, ch);
+  const start = performance.now();
+  function frame(now) {
+    if (!fxCanvases[id]) return;             // removed -> stop the loop
+    const elapsed = now - start;
+    const t = Math.min(1, elapsed / FADE_DURATION);
+    const step = Math.min(STEPS - 1, Math.floor(t * STEPS));
+    const f = STEPS > 1 ? step / (STEPS - 1) : 1;
+    drawPixelStage(ctx, src, scratch, cw, ch, f, 1 - t * (1 - MIN_OPACITY));
+    if (elapsed < FADE_DURATION) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// Materialize: coarse+faint -> sharp+opaque over MATERIALIZE_DURATION
+// (smooth, the reverse of the dissolve). On finish, removes the overlay
+// and calls onDone() to hand control back to the real element.
+function runPixelMaterialize({ id, src, left, top, cw, ch, onDone }) {
+  const { ctx, scratch } = makeFx(id, left, top, cw, ch);
+  const start = performance.now();
+  function frame(now) {
+    if (!fxCanvases[id]) return;             // removed mid-spawn -> stop
+    const t = Math.min(1, (now - start) / MATERIALIZE_DURATION);
+    drawPixelStage(ctx, src, scratch, cw, ch, 1 - t, MIN_OPACITY + t * (1 - MIN_OPACITY));
+    if (t < 1) { requestAnimationFrame(frame); return; }
+    if (fxCanvases[id]) { fxCanvases[id].remove(); delete fxCanvases[id]; }
+    if (onDone) onDone();
+  }
+  requestAnimationFrame(frame);
+}
+
+// "Already on canvas" indicator: the fragment grows a little and sprays a
+// burst of small black pixel-squares out from its border, then settles.
+function popIndicator(id) {
+  const el = document.getElementById(id);
+  if (!el || el.dataset.popping) return;       // gone, or already popping
+
+  // Reduced motion: fall back to a brief outline flash.
+  if (REDUCED_MOTION) {
+    el.style.outline = '1px solid #0000EE';
+    setTimeout(() => { if (document.getElementById(id)) el.style.outline = ''; }, 700);
+    return;
+  }
+
+  el.dataset.popping = '1';
+  el.style.transform = '';                      // settle any drag so it grows from home
+  followState.delete(el);
+
+  // Grow pulse (CSS animation overrides the drag's inline transform while it runs).
+  el.style.setProperty('--pop-scale', POP_SCALE);
+  el.style.setProperty('--pop-dur', POP_DURATION + 'ms');
+  el.classList.add('pop');
+  const clearPop = () => { el.classList.remove('pop'); delete el.dataset.popping; };
+  el.addEventListener('animationend', clearPop, { once: true });
+  setTimeout(() => { if (el.dataset.popping) clearPop(); }, POP_DURATION + 250);
+
+  spawnBorderParticles(el);
+}
+
+// Black pixel-squares emitted outward from a fragment's border, on an
+// independent overlay canvas (safe even if the fragment is later removed).
+function spawnBorderParticles(el) {
+  const w = el.offsetWidth, h = el.offsetHeight;
+  const left = el.offsetLeft, top = el.offsetTop;
+  const M = 44;                                 // margin so particles can fly outward
+  const W = w + 2 * M, H = h + 2 * M;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  const cvs = document.createElement('canvas');
+  cvs.className = 'fx';
+  cvs.style.left = (left - M) + 'px';
+  cvs.style.top  = (top - M) + 'px';
+  cvs.style.width = W + 'px'; cvs.style.height = H + 'px';
+  cvs.width = W * dpr; cvs.height = H * dpr;
+  const ctx = cvs.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.imageSmoothingEnabled = false;
+  document.getElementById('canvas').appendChild(cvs);
+
+  const per = 2 * (w + h);
+  const count = Math.min(120, Math.round(per / POP_PARTICLE_GAP));
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    // Pick a point on the rectangle perimeter + its outward normal.
+    let t = Math.random() * per, x, y, nx, ny;
+    if (t < w)           { x = t;           y = 0; nx = 0;  ny = -1; }
+    else if (t < w + h)  { x = w;           y = t - w; nx = 1; ny = 0; }
+    else if (t < 2*w + h){ x = w - (t - w - h); y = h; nx = 0; ny = 1; }
+    else                 { x = 0;           y = h - (t - 2*w - h); nx = -1; ny = 0; }
+    const speed = 0.8 + Math.random() * 2.4;
+    parts.push({
+      px: M + x, py: M + y,
+      vx: nx * speed + (Math.random() - 0.5) * 0.9,
+      vy: ny * speed + (Math.random() - 0.5) * 0.9,
+      size: 2 + Math.floor(Math.random() * 3),   // 2–4 px
+      age: 0,
+      life: 30 + Math.random() * 28,
+    });
+  }
+
+  ctx.fillStyle = '#000';
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    let alive = false;
+    for (const p of parts) {
+      if (p.age >= p.life) continue;
+      p.age++;
+      p.vx *= POP_FRICTION; p.vy *= POP_FRICTION;
+      p.px += p.vx; p.py += p.vy;
+      ctx.globalAlpha = 1 - p.age / p.life;
+      ctx.fillRect(Math.round(p.px), Math.round(p.py), p.size, p.size);
+      alive = true;
+    }
+    ctx.globalAlpha = 1;
+    if (alive) requestAnimationFrame(frame);
+    else cvs.remove();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   7. WORD WRAPPING + MARKUP HELPERS + PLACEMENT
+   ============================================================ */
+
+// Wrap each word in <span class="word"> so it can be restyled
+// individually. Recursive, so words inside <a>/<em> are preserved
+// (the inline elements themselves stay intact).
+function wrapWords(el) {
+  for (const node of [...el.childNodes]) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const parts = node.textContent.split(/(\s+)/);   // keep words and whitespace separate
+      const frag = document.createDocumentFragment();
+      for (const part of parts) {
+        if (part === '') continue;
+        if (/^\s+$/.test(part)) {
+          frag.appendChild(document.createTextNode(part));
+        } else {
+          const span = document.createElement('span');
+          span.className = 'word';
+          span.textContent = part;
+          frag.appendChild(span);
+        }
+      }
+      node.replaceWith(frag);
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      wrapWords(node);
+    }
+  }
+}
+
+// Notes below the medium — each may contain links.
+function notesMarkup(notes) {
+  return (notes || []).map(n => `<p class="note">${n}</p>`).join('');
+}
+
+// Medium (image / video / iframe) + notes below it.
+function mediaMarkup(frag) {
+  let media = '';
+  if (frag.type === 'image') {
+    media = `<img class="media" src="${frag.src}" alt="${frag.alt || ''}">`;
+  } else if (frag.type === 'video') {
+    media = `<video class="media" src="${frag.src}"${frag.poster ? ` poster="${frag.poster}"` : ''} controls preload="metadata"></video>`;
+  } else if (frag.type === 'iframe') {
+    const allow = frag.allow ? ` allow="${frag.allow}"` : '';
+    // Iframes swallow mouse events, so the cursor-drag never reaches the page.
+    // A transparent shield over the embed catches hover (enabling the drag) and
+    // steps aside on click so the embed stays usable.
+    media = `<div class="media-wrap"><iframe class="media" src="${frag.src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"${allow}></iframe><div class="iframe-shield" title="click to use · drag to move"></div></div>`;
+  }
+  return media + notesMarkup(frag.notes);
+}
+
+function placeFragment(id) {
+  const frag = FRAGMENTS[id];
+  markVisited(id);
+
+  const div = document.createElement('div');
+  div.id = id;
+  div.className = `fragment ${frag.type}`;
+  if (frag.type === 'text') {
+    div.innerHTML = `<div class="fragment-caption">${id}</div>${frag.html}`;
+  } else {
+    div.innerHTML = mediaMarkup(frag);
+  }
+
+  // Mark this fragment's own links: greyish blue if the target doesn't exist
+  // yet, presence dot if the target is already on the canvas.
+  div.querySelectorAll('a.link').forEach(a => {
+    const t = a.dataset.target;
+    if (!FRAGMENTS[t]) a.classList.add('unwritten');
+    else if (document.getElementById(t)) a.classList.add('on-canvas');
+  });
+  // Mark every link anywhere that points at this newly-placed fragment.
+  document.querySelectorAll(`a.link[data-target="${id}"]`).forEach(a => a.classList.add('on-canvas'));
+
+  // Wrap words in all paragraphs (text fragments and media notes);
+  // the caption is untouched because it is a <div>.
+  div.querySelectorAll('p').forEach(wrapWords);
+
+  // Insert offscreen but painted (opacity:1; .fragment defaults to 0) so
+  // html2canvas can snapshot it for the materialize effect. -9999px keeps
+  // it out of view, so there is no flash.
+  div.style.left = '-9999px';
+  div.style.opacity = '1';
+  document.getElementById('canvas').appendChild(div);
+  const w = div.offsetWidth;
+  const h = div.offsetHeight;
+
+  // Look for a free position; if space runs out, clear the oldest fragment(s).
+  let pos = findPosition(w, h);
+  while (!pos && order.length) {
+    removeFragment(order[0], { rot: true });
+    pos = findPosition(w, h);
+  }
+  if (!pos) pos = { x: PAD, y: PAD };   // emergency: empty canvas, show anyway
+
+  placed.push({ id, x: pos.x, y: pos.y, w, h });
+  order.push(id);
+
+  // Plain opacity-fade reveal (used as the fallback / reduced-motion path).
+  const showNow = () => {
+    div.style.left = pos.x + 'px';
+    div.style.top  = pos.y + 'px';
+    div.style.opacity = '';            // hand opacity back to the .shown class
+    div.style.visibility = '';
+    requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('shown')));
+  };
+
+  if (REDUCED_MOTION || typeof html2canvas !== 'function') { showNow(); return; }
+
+  // Materialize: snapshot while still offscreen & painted, then build the
+  // fragment up from coarse pixel blocks in place (the dissolve in reverse).
+  html2canvas(div, { backgroundColor: null, scale: 2, logging: false })
+    .then(src => {
+      if (!document.getElementById(id)) return;     // removed before snapshot resolved
+      div.style.left = pos.x + 'px';
+      div.style.top  = pos.y + 'px';
+      div.style.opacity = '';
+      div.style.visibility = 'hidden';              // overlay shows the build-up
+      runPixelMaterialize({
+        id, src, left: pos.x, top: pos.y, cw: w, ch: h,
+        onDone: () => {
+          if (!document.getElementById(id)) return;
+          div.classList.add('shown');
+          div.style.visibility = '';
+          div.style.transition = 'none';            // appear instantly (already faded in)
+          requestAnimationFrame(() => { div.style.transition = ''; });
+        }
+      });
+    })
+    .catch(showNow);                                // tainted/failed snapshot -> fade
+}
+
+/* ============================================================
+   8. REVEAL / SPAWN
+   ============================================================ */
+function reveal(id) {
+  const existing = document.getElementById(id);
+  if (existing && !fadingSet.has(id)) {
+    // Already on screen and not fading: grow + pixel-particle burst.
+    popIndicator(id);
+    return;
+  }
+  if (existing) removeFragment(id);   // was fading -> re-spawn fresh
+
+  placeFragment(id);
+
+  const a = active();
+  if (a.length >= MAX_ACTIVE) {
+    fadeOut(a[0]);
+  }
+}
+
+/* ============================================================
+   9. LINK INTERACTION (delegated click handler)
+   ============================================================ */
+document.addEventListener('click', e => {
+  // Clicks may land on a .word span inside the link, hence closest().
+  const link = e.target.closest('.link');
+  if (!link) return;
+  e.preventDefault();
+
+  if (link.classList.contains('dead')) {
+    // The connection simply stops working.
+    playDead();
+    show404(e.clientX, e.clientY);
+    return;
+  }
+
+  // Dangling link: the target fragment hasn't been written yet. Behave like a
+  // dead link (404) rather than crashing — it comes alive once the fragment exists.
+  if (!FRAGMENTS[link.dataset.target]) {
+    playDead();
+    show404(e.clientX, e.clientY);
+    return;
+  }
+
+  playClick();
+  link.classList.add('visited');
+  followedEdges.add(link.dataset.from + '>' + link.dataset.target);   // record the journey
+  reveal(link.dataset.target);
+});
+
+// Iframe shield: click it to step aside so the embed is usable; re-arm as soon
+// as the cursor is back on the page (any document mousemove means we're off the
+// iframe, since a live iframe swallows its own pointer events).
+document.addEventListener('click', e => {
+  const shield = e.target.closest('.iframe-shield');
+  if (shield) shield.classList.add('down');
+});
+document.addEventListener('mousemove', () => {
+  const down = document.querySelector('.iframe-shield.down');
+  if (down) down.classList.remove('down');
+}, true);
+
+/* ============================================================
+   10. HOVER MATERIAL SHIFT
+   Words near the cursor switch from the body font to Overpass
+   Mono — the machine text beneath the prose. Each word's rendered
+   width is locked before the font swap and the mono size is fitted
+   to that width, so the paragraph never reflows.
+   ============================================================ */
+const canvasEl = document.getElementById('canvas');
+
+// Mono glyphs all share one advance width; measure Overpass Mono's so each
+// word's mono font-size can be fitted to its locked width analytically.
+// The font is unused at load time, so it must be fetched explicitly
+// (browsers only download fonts that are matched by rendered text).
+let MONO_RATIO = 0.6;   // typical mono advance, refined once the font loads
+document.fonts.load('100px "Overpass Mono"').then(() => {
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = '100px "Overpass Mono", monospace';
+  const w = ctx.measureText('x').width / 100;
+  if (w > 0) MONO_RATIO = w;
+}).catch(() => {});
+
+let hoverFrag   = null;
+let cachedWords = [];
+let mouseX = 0, mouseY = 0;
+let hasMouse = false;          // true once we have a prior cursor position to diff against
+let rafPending  = false;
+let fxOn = true;               // hover interactions (material-shift + cursor-drag) on/off
+
+function cacheWords(frag) {
+  cachedWords = [...frag.querySelectorAll('.word')].map(el => {
+    const r = el.getBoundingClientRect();
+    const base = parseFloat(getComputedStyle(el).fontSize);
+    // Largest mono size that keeps the word inside its locked width,
+    // capped at 0.85x the body size.
+    const fit = Math.min(
+      0.85 * base,
+      r.width / (Math.max(1, el.textContent.length) * MONO_RATIO)
+    );
+    return { el, cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, fit };
+  });
+}
+
+function resetWords() {
+  for (const w of cachedWords) {
+    w.el.classList.remove('mat');
+    w.el.style.width = '';
+    w.el.style.fontSize = '';
+  }
+  cachedWords = [];
+  hoverFrag = null;
+}
+
+function applyShift() {
+  rafPending = false;
+  // Offset the lens by the fragment's current (soft-capped) drag offset so words and lens stay aligned.
+  const s = followState.get(hoverFrag);
+  const ox = s ? s.rx : 0, oy = s ? s.ry : 0;
+  for (const w of cachedWords) {
+    if (Math.hypot(w.cx + ox - mouseX, w.cy + oy - mouseY) < RADIUS) {
+      w.el.style.width = w.w + 'px';            // lock width before the font swap
+      w.el.style.fontSize = w.fit + 'px';       // mono sized to fit that width
+      w.el.classList.add('mat');
+    } else {
+      w.el.classList.remove('mat');
+      w.el.style.width = '';
+      w.el.style.fontSize = '';
+    }
+  }
+}
+
+document.addEventListener('mousemove', e => {
+  const nx = e.clientX, ny = e.clientY;
+  // Hover interactions disabled: just track the cursor, do nothing.
+  if (!fxOn) { mouseX = nx; mouseY = ny; hasMouse = true; return; }
+  // Fragments on the canvas AND the documentation window are cursor-interactive.
+  const frag = e.target.closest('.fragment, .doc-modal');
+
+  // Feed the cursor's movement (its per-frame velocity) to the fragment it's over.
+  if (!REDUCED_MOTION && frag && hasMouse) {
+    dragImpulseX += nx - mouseX;
+    dragImpulseY += ny - mouseY;
+  }
+  mouseX = nx; mouseY = ny; hasMouse = true;
+  setHoverFrag(frag);
+
+  // Material shift only applies to non-fading fragments with words
+  // (a disappearing fragment can still be dragged, but not mono-shifted).
+  if (!frag || fadingSet.has(frag.id) || !frag.querySelector('.word')) { if (hoverFrag) resetWords(); return; }
+  // Don't mono-shift while text is being selected — keeps the selection flush.
+  const sel = window.getSelection && window.getSelection();
+  if (sel && !sel.isCollapsed) { if (hoverFrag) resetWords(); return; }
+  if (frag !== hoverFrag) { resetWords(); hoverFrag = frag; cacheWords(frag); }
+  if (!rafPending) { rafPending = true; requestAnimationFrame(applyShift); }
+});
+
+canvasEl.addEventListener('mouseleave', () => { resetWords(); setHoverFrag(null); });
+window.addEventListener('resize', () => { resetWords(); setHoverFrag(null); });
+
+// Clear every mono'd word whenever text is selected (any method, mouse moving
+// or not), so the selection highlight stays a smooth, single-font band.
+function clearAllMat() {
+  document.querySelectorAll('.word.mat').forEach(w => {
+    w.classList.remove('mat'); w.style.width = ''; w.style.fontSize = '';
+  });
+  cachedWords = []; hoverFrag = null;
+}
+document.addEventListener('selectionchange', () => {
+  const s = window.getSelection && window.getSelection();
+  if (s && !s.isCollapsed) clearAllMat();
+});
+
+/* ============================================================
+   11. SOUND — synthesized (Web Audio), no asset files.
+   Muted by default; toggled from the footer. The AudioContext is
+   created on that user gesture to satisfy autoplay policies.
+   ============================================================ */
+let soundOn = false;
+let actx = null;
+
+function ensureAudio() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) actx = new AC();
+  }
+  if (actx && actx.state === 'suspended') actx.resume();
+}
+
+// Short white-noise buffer (seconds), used by the noise-based sounds.
+function noiseBuffer(seconds) {
+  const n = Math.floor(actx.sampleRate * seconds);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+// Typewriter "tk" — a brief band-passed noise burst.
+function playClick() {
+  if (!soundOn || !actx) return;
+  const now = actx.currentTime;
+  const src = actx.createBufferSource();
+  src.buffer = noiseBuffer(0.04);
+  const bp = actx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.8;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.06, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+  src.connect(bp).connect(g).connect(actx.destination);
+  src.start(now); src.stop(now + 0.06);
+}
+
+// Soft static/whoosh as a fragment dissolves (lowpass opens then closes).
+function playDissolve() {
+  if (!soundOn || !actx) return;
+  const now = actx.currentTime;
+  const src = actx.createBufferSource();
+  src.buffer = noiseBuffer(0.7);
+  const lp = actx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(300, now);
+  lp.frequency.linearRampToValueAtTime(1800, now + 0.25);
+  lp.frequency.linearRampToValueAtTime(200, now + 0.7);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.linearRampToValueAtTime(0.05, now + 0.15);
+  g.gain.linearRampToValueAtTime(0.0001, now + 0.7);
+  src.connect(lp).connect(g).connect(actx.destination);
+  src.start(now); src.stop(now + 0.72);
+}
+
+// Downward blip for a dead link (404).
+function playDead() {
+  if (!soundOn || !actx) return;
+  const now = actx.currentTime;
+  const osc = actx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(330, now);
+  osc.frequency.exponentialRampToValueAtTime(90, now + 0.15);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.05, now);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+  osc.connect(g).connect(actx.destination);
+  osc.start(now); osc.stop(now + 0.17);
+}
+
+const soundToggle = document.getElementById('sound-toggle');
+soundToggle.addEventListener('click', () => {
+  soundOn = !soundOn;
+  soundToggle.textContent = soundOn ? '♪ on' : '♪ off';
+  if (soundOn) { ensureAudio(); playClick(); }
+});
+
+// Hover-interaction toggle: turns the material-shift + cursor-drag off/on
+// for all content (canvas fragments, documentation, legal).
+const fxToggle = document.getElementById('fx-toggle');
+fxToggle.addEventListener('click', () => {
+  fxOn = !fxOn;
+  fxToggle.textContent = fxOn ? '✦ on' : '✦ off';
+  if (!fxOn) { resetWords(); setHoverFrag(null); }   // clear any active mono/drag, ease home
+});
+
+/* ============================================================
+   12. CURSOR DRAG — moving the cursor over a fragment drags it a
+   little. Each fragment is a spring-mass-damper: the cursor's
+   per-frame movement is a drag force, WEIGHT gives it inertia, a
+   spring pulls it home, DAMPING is friction. transform only, so
+   layout/collision rects are unaffected.
+   ============================================================ */
+const followState = new Map();   // el -> { x, y, vx, vy }  (offset from home + velocity)
+let hoverFollowFrag = null;      // fragment currently under the cursor
+let dragImpulseX = 0, dragImpulseY = 0;   // cursor movement accrued since last frame
+let physicsRAF = null;
+
+function setHoverFrag(frag) {
+  if (REDUCED_MOTION) return;
+  hoverFollowFrag = frag || null;
+  if (frag && !followState.has(frag)) followState.set(frag, { x: 0, y: 0, vx: 0, vy: 0, rx: 0, ry: 0 });
+  startPhysics();
+}
+
+function startPhysics() {
+  if (REDUCED_MOTION || physicsRAF != null) return;
+  const tick = () => {
+    let active = false;
+    for (const [el, s] of followState) {
+      if (!el.isConnected) { followState.delete(el); continue; }
+
+      let fx = -s.x * SPRING;                 // spring back toward home
+      let fy = -s.y * SPRING;
+      if (el === hoverFollowFrag) {           // cursor motion drags this one
+        fx += dragImpulseX * DRAG_PULL;
+        fy += dragImpulseY * DRAG_PULL;
+      }
+      s.vx = (s.vx + fx / WEIGHT) * DAMPING;  // inertia + friction
+      s.vy = (s.vy + fy / WEIGHT) * DAMPING;
+      s.x += s.vx;                            // raw offset, unclamped (the spring bounds it)
+      s.y += s.vy;
+      // Smooth saturation toward the limit — no hard wall to "hit".
+      s.rx = MAX_OFFSET * Math.tanh(s.x / MAX_OFFSET);
+      s.ry = MAX_OFFSET * Math.tanh(s.y / MAX_OFFSET);
+
+      const atRest = Math.abs(s.x) < 0.15 && Math.abs(s.y) < 0.15 &&
+                     Math.abs(s.vx) < 0.15 && Math.abs(s.vy) < 0.15;
+      if (atRest && el !== hoverFollowFrag) {
+        el.style.transform = '';
+        const fc = fxCanvases[el.id]; if (fc) fc.style.transform = '';
+        followState.delete(el); continue;
+      }
+      el.style.transform = `translate(${s.rx.toFixed(2)}px, ${s.ry.toFixed(2)}px)`;
+      // Mirror the drag onto the dissolve overlay so a fading fragment moves too.
+      const fc = fxCanvases[el.id]; if (fc) fc.style.transform = el.style.transform;
+      if (!atRest) active = true;
+    }
+    dragImpulseX = 0; dragImpulseY = 0;       // consumed this frame
+    // Keep running while anything moves; a still cursor lets it settle + stop.
+    physicsRAF = active ? requestAnimationFrame(tick) : null;
+  };
+  physicsRAF = requestAnimationFrame(tick);
+}
+
+/* ============================================================
+   ★ TWEAK ME — cursor-drag feel
+   Edit these freely. You can also change them live in the browser
+   console while the page is open, e.g.  WEIGHT = 6  then drag again.
+   Want it smaller + slower? lower DRAG_PULL & MAX_OFFSET, raise WEIGHT.
+   ------------------------------------------------------------
+   DRAG_PULL  — how much your cursor movement pushes a fragment
+                (bigger = it follows your motion more)
+   SPRING     — pull back toward home; bigger = faster return
+   DAMPING    — friction, 0–1; lower = more drag / less glide
+   WEIGHT     — heaviness/inertia; bigger = slower, gentler start
+   MAX_OFFSET — soft limit on travel in px (smooth, never a hard wall)
+   ============================================================ */
+let DRAG_PULL  = 0.015;
+let SPRING     = 0.025;
+let DAMPING    = 0.9;
+let WEIGHT     = 7.5;
+let MAX_OFFSET = 10;
+
+/* On-screen sliders for the values above (dev tool). get/set closures
+   read & reassign the let vars; startPhysics() picks up changes next frame. */
+const TUNABLES = [
+  { key: 'DRAG_PULL',  min: 0,     max: 0.3,  step: 0.005, get: () => DRAG_PULL,  set: v => DRAG_PULL  = v },
+  { key: 'SPRING',     min: 0.005, max: 0.2,  step: 0.005, get: () => SPRING,     set: v => SPRING     = v },
+  { key: 'DAMPING',    min: 0.5,   max: 0.98, step: 0.01,  get: () => DAMPING,    set: v => DAMPING    = v },
+  { key: 'WEIGHT',     min: 0.5,   max: 8,    step: 0.1,   get: () => WEIGHT,     set: v => WEIGHT     = v },
+  { key: 'MAX_OFFSET', min: 1,     max: 30,   step: 1,     get: () => MAX_OFFSET, set: v => MAX_OFFSET = v },
+];
+
+function buildTuner() {
+  const fmt = v => String(+v.toFixed(3));
+  const panel = document.createElement('div');
+  panel.id = 'tuner';
+
+  const head = document.createElement('div');
+  head.className = 'tuner-head';
+  const title = document.createElement('span');
+  title.textContent = 'drag tuning';
+  const reset = document.createElement('span');
+  reset.className = 'tuner-reset';
+  reset.textContent = 'reset';
+  head.append(title, reset);
+  head.addEventListener('click', e => {
+    if (e.target !== reset) panel.classList.toggle('collapsed');
+  });
+
+  const body = document.createElement('div');
+  body.className = 'tuner-body';
+
+  const resetters = [];
+  for (const t of TUNABLES) {
+    const def = t.get();
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const label = document.createElement('label');
+    label.textContent = t.key.toLowerCase();
+
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.min = t.min; range.max = t.max; range.step = t.step;
+    range.value = def;
+
+    const val = document.createElement('span');
+    val.className = 'val';
+    val.textContent = fmt(def);
+
+    range.addEventListener('input', () => {
+      const v = parseFloat(range.value);
+      t.set(v);
+      val.textContent = fmt(v);
+    });
+
+    resetters.push(() => { range.value = def; t.set(def); val.textContent = fmt(def); });
+    row.append(label, range, val);
+    body.appendChild(row);
+  }
+
+  reset.addEventListener('click', () => resetters.forEach(fn => fn()));
+
+  panel.append(head, body);
+  document.body.appendChild(panel);
+}
+buildTuner();
+
+/* ============================================================
+   13. MODAL WINDOWS (documentation, legal)
+   ============================================================ */
+// Modal content is fragment-like: word-wrap its paragraphs so the hover
+// material-shift works, and re-cache on scroll so the lens stays aligned.
+document.querySelectorAll('.doc-content p').forEach(wrapWords);
+document.querySelectorAll('.doc-modal').forEach(m => {
+  m.addEventListener('scroll', () => { if (hoverFrag === m) resetWords(); });
+});
+
+function openModal(overlay) {
+  document.body.classList.add('modal-open');
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  overlay.querySelector('.doc-close').focus();
+}
+function closeModal(overlay) {
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+  // Only un-blur the canvas once no modal is left open.
+  if (!document.querySelector('.doc-overlay.open')) document.body.classList.remove('modal-open');
+}
+
+document.getElementById('doc-link').addEventListener('click', () => openModal(document.getElementById('doc-overlay')));
+document.getElementById('legal-link').addEventListener('click', () => openModal(document.getElementById('legal-overlay')));
+
+document.querySelectorAll('.doc-overlay').forEach(overlay => {
+  overlay.querySelector('.doc-close').addEventListener('click', () => closeModal(overlay));
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.doc-overlay.open').forEach(closeModal);
+});
+
+/* ============================================================
+   14. "READ THE WHOLE WEB" — open every fragment at least once
+   and a quiet colophon line flashes (once). markVisited() is
+   called from placeFragment() on each spawn.
+   ============================================================ */
+const ALL_FRAGS = Object.keys(FRAGMENTS).length;
+const visitedFrags = new Set();
+const followedEdges = new Set();   // "from>target" for each link followed
+let colophonShown = false;
+let colophonTimer = null;
+
+// Index each fragment's outgoing link targets (in document order) so the
+// session path can show followed branches vs. unfollowed ("?") ones.
+const FRAG_LINKS = {};
+(function indexFragLinks() {
+  const tmp = document.createElement('div');
+  for (const id in FRAGMENTS) {
+    const f = FRAGMENTS[id];
+    tmp.innerHTML = f.type === 'text' ? f.html : (f.notes || []).join(' ');
+    FRAG_LINKS[id] = [...tmp.querySelectorAll('a.link')].map(a => a.dataset.target);
+  }
+})();
+
+function markVisited(id) {
+  if (colophonShown) return;
+  visitedFrags.add(id);
+  if (visitedFrags.size >= ALL_FRAGS) { colophonShown = true; showColophon(); }
+}
+
+function showColophon() {
+  const el = document.getElementById('colophon');
+  el.classList.add('show');
+  clearTimeout(colophonTimer);
+  colophonTimer = setTimeout(() => el.classList.remove('show'), 6000);
+}
+
+// Temporary test button (footer): trigger the colophon without visiting all.
+document.getElementById('colophon-test').addEventListener('click', showColophon);
+
+/* Hidden easter egg: double-click "Hyperlinks" → a session window showing a
+   directed graph of the whole fragment mesh. Nodes = fragments; ghost nodes =
+   dangling 404 targets; arrows = link direction; red = dead-end fragments
+   (every outgoing link points only at missing targets). Visited fragments are
+   tinted and followed edges emphasized, so the reader's path shows too. */
+const SVGNS = 'http://www.w3.org/2000/svg';
+const GRAPH_W = 760, GRAPH_H = 460;
+const NODE_W = 96, NODE_H = 24;   // node box (label is fitted/truncated to it)
+
+// Derive nodes + directed edges from the existing FRAGMENTS / FRAG_LINKS index.
+function buildGraph() {
+  const nodeMap = new Map();
+  const ensure = (id, type) => {
+    if (!nodeMap.has(id)) nodeMap.set(id, { id, type, x: 0, y: 0, vx: 0, vy: 0 });
+    return nodeMap.get(id);
+  };
+  for (const id in FRAGMENTS) ensure(id, 'frag');
+  const edges = [];
+  for (const id in FRAG_LINKS) {
+    const targets = FRAG_LINKS[id] || [];
+    for (const t of targets) {
+      ensure(t, FRAGMENTS[t] ? 'frag' : 'ghost');
+      edges.push({ from: id, to: t });
+    }
+    // Dead end: has links, but none reach an existing fragment.
+    const node = nodeMap.get(id);
+    if (node && node.type === 'frag')
+      node.deadend = targets.length > 0 && targets.every(t => !FRAGMENTS[t]);
+  }
+  return { nodes: [...nodeMap.values()], edges, byId: nodeMap };
+}
+
+// Tiny force-directed layout (Fruchterman-Reingold-ish). `fixed` (optional) is
+// a node whose position is held (used while dragging). Mutates node.x/.y.
+function layoutGraph(g, iters = 320, fixed = null) {
+  const { nodes, edges, byId } = g;
+  const pad = 60, rest = 150, rep = 9000, spring = 0.02, center = 0.008, damp = 0.85;
+  if (iters >= 300) {            // fresh layout → seed positions in a ring + jitter
+    nodes.forEach((n, i) => {
+      const a = (i / nodes.length) * Math.PI * 2;
+      n.x = GRAPH_W / 2 + Math.cos(a) * 150 + (Math.random() - 0.5) * 40;
+      n.y = GRAPH_H / 2 + Math.sin(a) * 110 + (Math.random() - 0.5) * 40;
+      n.vx = n.vy = 0;
+    });
+  }
+  for (let it = 0; it < iters; it++) {
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        let d2 = dx * dx + dy * dy; if (d2 < 1) { d2 = 1; dx = Math.random(); dy = Math.random(); }
+        const f = rep / d2, d = Math.sqrt(d2);
+        const fx = (dx / d) * f, fy = (dy / d) * f;
+        a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+      }
+    }
+    for (const e of edges) {
+      const a = byId.get(e.from), b = byId.get(e.to);
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+      const f = (d - rest) * spring;
+      const fx = (dx / d) * f, fy = (dy / d) * f;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    }
+    for (const n of nodes) {
+      n.vx += (GRAPH_W / 2 - n.x) * center;
+      n.vy += (GRAPH_H / 2 - n.y) * center;
+      if (n === fixed) { n.vx = n.vy = 0; continue; }
+      n.vx *= damp; n.vy *= damp;
+      n.x += n.vx; n.y += n.vy;
+      n.x = Math.max(pad, Math.min(GRAPH_W - pad, n.x));
+      n.y = Math.max(pad, Math.min(GRAPH_H - pad, n.y));
+    }
+  }
+}
+
+// Trim a slug so it fits the node box in the mono font (~6px/char at 10px).
+function fitLabel(id) {
+  const max = Math.floor((NODE_W - 8) / 5.6);
+  return id.length > max ? id.slice(0, max - 1) + '…' : id;
+}
+
+let graphState = null;   // { g } kept between renders for dragging
+function renderGraph() {
+  const svg = document.getElementById('stats-graph');
+  svg.innerHTML = '';
+  const g = graphState.g;
+
+  // defs: two arrowheads (solid + ghost-grey).
+  const defs = document.createElementNS(SVGNS, 'defs');
+  defs.innerHTML =
+    `<marker id="arr" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+       <path d="M0,0 L8,3 L0,6 Z" fill="#111"/></marker>
+     <marker id="arrg" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+       <path d="M0,0 L8,3 L0,6 Z" fill="#cfcfcf"/></marker>`;
+  svg.appendChild(defs);
+
+  const edgeLayer = document.createElementNS(SVGNS, 'g');
+  const nodeLayer = document.createElementNS(SVGNS, 'g');
+  svg.appendChild(edgeLayer);
+  svg.appendChild(nodeLayer);
+
+  // Edges — shortened to the target box edge so the arrowhead lands on it.
+  for (const e of g.edges) {
+    const a = g.byId.get(e.from), b = g.byId.get(e.to);
+    const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+    const ux = dx / d, uy = dy / d;
+    // distance from a box centre to its border along the line direction (both
+    // boxes are the same size, so the same cut works at each end).
+    const cut = Math.min(NODE_W / 2 / Math.max(Math.abs(ux), 1e-3),
+                         NODE_H / 2 / Math.max(Math.abs(uy), 1e-3));
+    const line = document.createElementNS(SVGNS, 'line');
+    line.setAttribute('x1', (a.x + ux * cut).toFixed(1));
+    line.setAttribute('y1', (a.y + uy * cut).toFixed(1));
+    line.setAttribute('x2', (b.x - ux * (cut + 4)).toFixed(1));
+    line.setAttribute('y2', (b.y - uy * (cut + 4)).toFixed(1));
+    const ghost = b.type === 'ghost';
+    line.setAttribute('class', 'gedge' + (ghost ? ' ghost' : followedEdges.has(e.from + '>' + e.to) ? ' followed' : ''));
+    line.setAttribute('marker-end', `url(#${ghost ? 'arrg' : 'arr'})`);
+    edgeLayer.appendChild(line);
+  }
+
+  // Nodes.
+  for (const n of g.nodes) {
+    const grp = document.createElementNS(SVGNS, 'g');
+    let cls = 'gnode';
+    if (n.type === 'ghost') cls += ' ghost';
+    if (n.deadend) cls += ' deadend';
+    if (n.id === START_ID) cls += ' start';
+    if (n.type === 'frag' && visitedFrags.has(n.id)) cls += ' visited';
+    grp.setAttribute('class', cls);
+    grp.dataset.id = n.id;
+
+    if (n.id === START_ID) {
+      const ring = document.createElementNS(SVGNS, 'rect');
+      ring.setAttribute('class', 'ring');
+      ring.setAttribute('x', -NODE_W / 2 - 3); ring.setAttribute('y', -NODE_H / 2 - 3);
+      ring.setAttribute('width', NODE_W + 6); ring.setAttribute('height', NODE_H + 6);
+      ring.setAttribute('rx', 5);
+      grp.appendChild(ring);
+    }
+    const rect = document.createElementNS(SVGNS, 'rect');
+    rect.setAttribute('x', -NODE_W / 2); rect.setAttribute('y', -NODE_H / 2);
+    rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
+    rect.setAttribute('rx', 3);
+    grp.appendChild(rect);
+
+    const text = document.createElementNS(SVGNS, 'text');
+    text.textContent = fitLabel(n.id);
+    grp.appendChild(text);
+    const title = document.createElementNS(SVGNS, 'title');
+    title.textContent = n.id + (n.type === 'ghost' ? ' (missing)' : n.deadend ? ' (dead end)' : '');
+    grp.appendChild(title);
+
+    grp.setAttribute('transform', `translate(${n.x.toFixed(1)},${n.y.toFixed(1)})`);
+    nodeLayer.appendChild(grp);
+  }
+}
+
+// Drag a node: move it to the cursor and let neighbours relax around it.
+(function wireGraphDrag() {
+  const svg = document.getElementById('stats-graph');
+  let dragNode = null, raf = null;
+  const toSVG = e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  };
+  svg.addEventListener('pointerdown', e => {
+    const grp = e.target.closest('.gnode'); if (!grp || !graphState) return;
+    dragNode = graphState.g.byId.get(grp.dataset.id);
+    svg.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!dragNode) return;
+    const p = toSVG(e);
+    dragNode.x = Math.max(60, Math.min(GRAPH_W - 60, p.x));
+    dragNode.y = Math.max(60, Math.min(GRAPH_H - 60, p.y));
+    if (!REDUCED_MOTION) layoutGraph(graphState.g, 6, dragNode);
+    if (!raf) raf = requestAnimationFrame(() => { raf = null; renderGraph(); });
+  });
+  const end = e => { if (dragNode) { dragNode = null; try { svg.releasePointerCapture(e.pointerId); } catch (_) {} } };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+})();
+
+// Choice tree rooted at START_ID: each fragment's links are children —
+// followed ones expand into the target, unfollowed ones are "?". A shared
+// visited set prevents infinite recursion on back-links.
+function buildPathTree() {
+  const visited = new Set();
+  function node(id) {
+    visited.add(id);
+    const children = (FRAG_LINKS[id] || []).map(target => {
+      if (!followedEdges.has(id + '>' + target)) return { label: '?', children: [] };
+      return visited.has(target) ? { label: target + ' ↩', children: [] } : node(target);
+    });
+    return { label: id, children };
+  }
+  return node(START_ID);
+}
+
+// Render the tree as indented box-drawing text.
+function renderTree(node, prefix = '', isRoot = true) {
+  let out = isRoot ? node.label + '\n' : '';
+  node.children.forEach((child, i) => {
+    const last = i === node.children.length - 1;
+    out += prefix + (last ? '└── ' : '├── ') + child.label + '\n';
+    if (child.children.length) out += renderTree(child, prefix + (last ? '    ' : '│   '), false);
+  });
+  return out;
+}
+
+function showStats() {
+  document.getElementById('stats-count').textContent =
+    `${visitedFrags.size} of ${ALL_FRAGS} fragments visited`;
+  document.querySelector('#stats-overlay .stats-modal').classList.add('graph');
+  graphState = { g: buildGraph() };
+  layoutGraph(graphState.g);
+  renderGraph();
+  document.getElementById('stats-path').textContent = renderTree(buildPathTree());
+  openModal(document.getElementById('stats-overlay'));
+}
+
+document.getElementById('hyperlinks-title').addEventListener('dblclick', showStats);
+
+/* ============================================================
+   14c. INLINE PEEKS — hover tooltips that show, not navigate.
+   .peek-img (wavy underline) → image card that pixel-materializes.
+   .peek-res (footnote [↗] mark) → resource name + URL preview.
+   ============================================================ */
+const PEEK_DELAY = 150;            // ms hover before a peek opens
+const PEEK_MATERIALIZE = 420;      // ms the peek pixel-materialize runs
+const PEEK_MAX_BLUR = 5;           // px CSS blur a tooltip reaches as its fragment fully dissolves
+let peekEl = null;                 // the popover currently shown
+let peekTrigger = null;            // the trigger it belongs to
+let peekTimer = null;
+let peekFx = null;                 // overlay canvas of a popover's pixel-materialize
+let peekFadeRAF = null;            // rAF syncing the tooltip's blur to a dissolving fragment
+
+// Append the popover and anchor it above the trigger, centred, clamped to the
+// viewport (flips below if there's no room). Returns its placed rect.
+function positionPeek(node, trigger) {
+  document.body.appendChild(node);
+  const t = trigger.getBoundingClientRect();
+  const w = node.offsetWidth, h = node.offsetHeight, M = 8;
+  let left = t.left + t.width / 2 - w / 2;
+  left = Math.max(M, Math.min(window.innerWidth - w - M, left));
+  let top = t.top - h - 10;
+  if (top < M) top = t.bottom + 10;
+  node.style.left = left + 'px';
+  node.style.top  = top + 'px';
+  return { left, top, w, h };
+}
+
+// Position + plain fade-in (used by the image card).
+function placePeek(node, trigger) {
+  positionPeek(node, trigger);
+  requestAnimationFrame(() => node.classList.add('show'));
+}
+
+// Reveal a text popover (already built) with the same pixel-materialize as the
+// image: snapshot it with html2canvas, then resolve coarse→sharp over an
+// overlay canvas. Falls back to a plain fade when motion is reduced or
+// html2canvas is unavailable.
+function materializeNode(node, trigger) {
+  const pos = positionPeek(node, trigger);
+  if (REDUCED_MOTION || typeof html2canvas !== 'function') {
+    requestAnimationFrame(() => node.classList.add('show'));
+    return;
+  }
+  const cw = pos.w, ch = pos.h;
+  // Plain fade-in if the snapshot can't run for any reason — the tip must show.
+  const fallback = () => { if (peekEl === node) { node.style.transition = ''; node.style.opacity = ''; node.style.left = pos.left + 'px'; node.classList.add('show'); } };
+  // Snapshot it offscreen-but-opaque so there's no flash of the sharp tip.
+  node.style.transition = 'none';
+  node.style.opacity = '1';
+  node.style.left = '-9999px';
+  let shot;
+  try { shot = html2canvas(node, { backgroundColor: null, scale: 2, logging: false }); } catch (_) {}
+  if (!shot || typeof shot.then !== 'function') { fallback(); return; }
+  shot
+    .then(src => {
+      if (peekEl !== node) return;            // hover already moved on
+      node.style.opacity = '0';
+      node.style.left = pos.left + 'px';       // back to the anchored spot
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const canvas = document.createElement('canvas');
+      Object.assign(canvas.style, {
+        position: 'fixed', left: pos.left + 'px', top: pos.top + 'px',
+        width: cw + 'px', height: ch + 'px', zIndex: '6600', pointerEvents: 'none'
+      });
+      canvas.width = cw * dpr; canvas.height = ch * dpr;
+      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+      const blr = document.createElement('canvas'); blr.width = cw; blr.height = ch;
+      const tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = ch;
+      const scratch = { blr, blrCtx: blr.getContext('2d'), tmp, tctx: tmp.getContext('2d') };
+      document.body.appendChild(canvas);
+      peekFx = canvas;
+      const start = performance.now();
+      const frame = now => {
+        if (peekEl !== node) { canvas.remove(); if (peekFx === canvas) peekFx = null; return; }
+        const t = Math.min(1, (now - start) / PEEK_MATERIALIZE);
+        drawPixelStage(ctx, src, scratch, cw, ch, 1 - t, MIN_OPACITY + t * (1 - MIN_OPACITY));
+        if (t < 1) { requestAnimationFrame(frame); return; }
+        canvas.remove(); if (peekFx === canvas) peekFx = null;
+        node.style.opacity = '';               // hand back to CSS, no re-fade
+        node.classList.add('show');
+        requestAnimationFrame(() => { node.style.transition = ''; });
+      };
+      requestAnimationFrame(frame);
+    })
+    .catch(fallback);
+}
+
+function openImagePeek(trigger) {
+  const src = trigger.dataset.img; if (!src) return;
+  const card = document.createElement('div');
+  card.className = 'peek-card';
+  const cw = 220;
+  const canvas = document.createElement('canvas');
+  canvas.style.width = cw + 'px';
+  card.appendChild(canvas);
+  if (trigger.dataset.cap) {
+    const cap = document.createElement('div');
+    cap.className = 'peek-cap';
+    cap.textContent = trigger.dataset.cap;
+    card.appendChild(cap);
+  }
+  peekEl = card; peekTrigger = trigger;
+
+  const img = new Image();
+  img.onload = () => {
+    if (peekEl !== card) return;                  // hover already moved on
+    const ch = Math.round(cw * (img.naturalHeight / img.naturalWidth || 0.6));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = cw * dpr; canvas.height = ch * dpr;
+    canvas.style.height = ch + 'px';
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    const blr = document.createElement('canvas'); blr.width = cw; blr.height = ch;
+    const tmp = document.createElement('canvas'); tmp.width = cw; tmp.height = ch;
+    const scratch = { blr, blrCtx: blr.getContext('2d'), tmp, tctx: tmp.getContext('2d') };
+    placePeek(card, trigger);
+    if (REDUCED_MOTION) { drawPixelStage(ctx, img, scratch, cw, ch, 0, 1); return; }
+    const start = performance.now();
+    const frame = now => {
+      if (peekEl !== card) return;                // closed mid-animation
+      const t = Math.min(1, (now - start) / PEEK_MATERIALIZE);
+      drawPixelStage(ctx, img, scratch, cw, ch, 1 - t, MIN_OPACITY + t * (1 - MIN_OPACITY));
+      if (t < 1) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  };
+  img.onerror = () => { if (peekEl === card) closePeek(); };
+  img.src = src;
+}
+
+function openResPeek(trigger) {
+  const tip = document.createElement('div');
+  tip.className = 'peek-tip';
+  const label = trigger.dataset.label || 'resource';
+  let host = trigger.getAttribute('href') || '';
+  try { host = new URL(host).hostname.replace(/^www\./, ''); } catch (_) {}
+  tip.innerHTML = `<span class="peek-name"></span><span class="peek-url"></span>`;
+  tip.querySelector('.peek-name').textContent = label;
+  tip.querySelector('.peek-url').textContent = host;
+  peekEl = tip; peekTrigger = trigger;
+  materializeNode(tip, trigger);
+}
+
+// Note peek: a definition / quote / code card built from the trigger's inert
+// <template class="peek-body">, pixel-materialized like the other peeks.
+function openNotePeek(trigger) {
+  const body = trigger.querySelector('.peek-body');
+  if (!body) return;
+  const card = document.createElement('div');
+  card.className = 'peek-note-card' + (trigger.dataset.kind ? ' ' + trigger.dataset.kind : '');
+  card.innerHTML = body.innerHTML;
+  peekEl = card; peekTrigger = trigger;
+  materializeNode(card, trigger);
+}
+
+// While a peek is open, keep its blur/opacity in sync with its parent
+// fragment's dissolve (so a tooltip over a dissolving fragment fades with it).
+// Uses CSS filter (blur + opacity) so it never fights the .show / materialize.
+function startPeekFade() {
+  cancelAnimationFrame(peekFadeRAF);
+  const tick = () => {
+    if (!peekEl) { peekFadeRAF = null; return; }
+    const frag = peekTrigger && peekTrigger.closest('.fragment');
+    const id = frag && frag.id;
+    if (id && fadingSet.has(id) && dissolveStart[id] != null) {
+      const t = Math.min(1, Math.max(0, (performance.now() - dissolveStart[id]) / FADE_DURATION));
+      // gentle ease (a touch faster than linear); opacity stays 100%.
+      const f = `blur(${(Math.pow(t, 0.8) * PEEK_MAX_BLUR).toFixed(2)}px)`;
+      peekEl.style.filter = f;
+      if (peekFx) peekFx.style.filter = f;
+    } else {
+      peekEl.style.filter = '';
+      if (peekFx) peekFx.style.filter = '';
+    }
+    peekFadeRAF = requestAnimationFrame(tick);
+  };
+  peekFadeRAF = requestAnimationFrame(tick);
+}
+
+function closePeek() {
+  clearTimeout(peekTimer); peekTimer = null;
+  cancelAnimationFrame(peekFadeRAF); peekFadeRAF = null;
+  peekTrigger = null;
+  if (peekFx) { peekFx.remove(); peekFx = null; }   // drop any in-flight materialize overlay
+  const node = peekEl; peekEl = null;
+  if (!node) return;
+  node.classList.remove('show');
+  node.addEventListener('transitionend', () => node.remove(), { once: true });
+  setTimeout(() => node.remove(), 400);   // safety if no transition fires
+}
+
+document.addEventListener('pointerover', e => {
+  const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
+  if (!trigger || trigger === peekTrigger) return;
+  // ignore moving between inner .word spans of the same trigger
+  if (trigger.contains(e.relatedTarget)) return;
+  clearTimeout(peekTimer);
+  closePeek();
+  peekTimer = setTimeout(() => {
+    if (trigger.classList.contains('peek-img')) openImagePeek(trigger);
+    else if (trigger.classList.contains('peek-note')) openNotePeek(trigger);
+    else openResPeek(trigger);
+    startPeekFade();   // sync the tooltip's blur if the parent fragment is dissolving
+  }, PEEK_DELAY);
+});
+document.addEventListener('pointerout', e => {
+  const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
+  if (!trigger || trigger !== peekTrigger && !peekTimer) return;
+  if (trigger && trigger.contains(e.relatedTarget)) return;   // still inside
+  closePeek();
+});
+window.addEventListener('scroll', closePeek, true);
+window.addEventListener('resize', closePeek);
+
+/* ============================================================
+   15. BOOTSTRAP
+   ============================================================ */
+placeFragment(START_ID);
+</script>
+</body>
+</html>
