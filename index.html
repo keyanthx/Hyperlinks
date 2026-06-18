@@ -100,10 +100,12 @@ body.modal-open #canvas { filter: blur(4px); }
 
 .fragment-caption {
   font-size: 10px;
-  color: grey;
+  color: #767676;
   font-family: "Overpass Mono", monospace;
   margin-bottom: 10px;
   text-transform: lowercase;
+  margin-top: 0;
+  font-weight: normal;
 }
 
 .fragment.text p {
@@ -195,18 +197,47 @@ a.link, a.peek-res, .peek-img, .peek-note {
 a.link.visited { color: #551A8B; }   /* :visited — set in JS once clicked */
 
 /* Links whose target fragment doesn't exist yet — greyish blue (authoring aid). */
-a.link.unwritten { color: #6b7f99; }
+a.link.unwritten { color: #546d8c; }
 
 /* Hover, and while the target is on the canvas: full underline (sweeps in from
    the left; only background-size transitions, so the position flip is unseen). */
 /* Underline-sweep only for things that navigate (real links + [↗] sources).
    Peek markers (image / notes) stay blue but never underline. */
 a.link:hover,
+a.link:focus-visible,
 a.peek-res:hover,
+a.peek-res:focus-visible,
 a.link.on-canvas:not(.dead) {
   background-position: 0 100%;
   background-size: 100% 1.5px;
 }
+
+/* Keyboard focus ring — visible only with keyboard navigation, never on
+   mouse click. Applied to links, peek triggers, and footer buttons. */
+a.link:focus-visible,
+a.peek-res:focus-visible,
+.peek-note:focus-visible,
+.peek-img:focus-visible,
+#doc-link:focus-visible,
+#legal-link:focus-visible,
+#fx-toggle:focus-visible,
+#hyperlinks-title:focus-visible {
+  outline: 2px solid #0000EE;
+  outline-offset: 2px;
+}
+/* Suppress the default outline for mouse users (focus-visible already
+   handles keyboard users). */
+a.link:focus:not(:focus-visible),
+a.peek-res:focus:not(:focus-visible),
+.peek-note:focus:not(:focus-visible),
+.peek-img:focus:not(:focus-visible),
+#doc-link:focus:not(:focus-visible),
+#legal-link:focus:not(:focus-visible),
+#fx-toggle:focus:not(:focus-visible),
+#hyperlinks-title:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .peek-note { cursor: help; }
 .peek-img  { cursor: zoom-in; }
 
@@ -215,7 +246,7 @@ a.link:not(.dead):active { color: #FF0000; }   /* :active — while pressed */
 /* Link rot: a link whose target has died. Greyed and struck through;
    clicking it yields a 404 (handled in JS) instead of spawning. */
 a.link.dead {
-  color: #999;
+  color: #767676;
   text-decoration: line-through;
   text-decoration-thickness: 1px;
   cursor: not-allowed;
@@ -269,7 +300,7 @@ a.link.dead {
   margin-top: 5px;
   font-family: "Overpass Mono", monospace;
   font-size: 10px;
-  color: grey;
+  color: #767676;
   max-width: 220px;
 }
 .peek-tip {
@@ -280,7 +311,7 @@ a.link.dead {
   line-height: 1.4;
 }
 .peek-tip .peek-name { color: #111; }
-.peek-tip .peek-url  { color: grey; display: block; margin-top: 2px; word-break: break-all; }
+.peek-tip .peek-url  { color: #767676; display: block; margin-top: 2px; word-break: break-all; }
 
 /* Note peeks: definition / quote / code cards (pixel-materialized). */
 .peek-note-card { max-width: 280px; padding: 10px 12px; font-size: 13px; line-height: 1.5; color: #111; }
@@ -303,7 +334,7 @@ footer {
   transform: translateX(-50%);
   font-size: 10px;
   font-family: "Overpass Mono", monospace;
-  color: #999;
+  color: #767676;
   pointer-events: none;
   white-space: nowrap;
   z-index: 100;
@@ -313,7 +344,7 @@ footer {
 #fx-toggle {
   pointer-events: auto;
   cursor: pointer;
-  color: #777;
+  color: #757575;
 }
 #fx-toggle:hover { color: #111; }
 
@@ -423,7 +454,7 @@ footer {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #777;
+  color: #757575;
 }
 .intro-enter.shown { animation: intro-pulse 1.8s ease-in-out infinite; }
 @keyframes intro-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
@@ -474,7 +505,7 @@ footer {
 #stats-graph .gnode.deadend rect { stroke: #b00; }
 #stats-graph .gnode.deadend text { fill: #b00; }
 #stats-graph .gnode.ghost rect { fill: #fafafa; stroke: #cfcfcf; stroke-dasharray: 3 3; }
-#stats-graph .gnode.ghost text { fill: #aaa; font-style: italic; }
+#stats-graph .gnode.ghost text { fill: #767676; font-style: italic; }
 #graph-legend {
   margin-top: 12px;
   display: flex;
@@ -482,13 +513,13 @@ footer {
   gap: 4px 14px;
   font-family: "Overpass Mono", monospace;
   font-size: 11px;
-  color: grey;
+  color: #767676;
 }
 #graph-legend b { font-weight: normal; }
 #graph-legend .lg-frag { color: #111; }
 #graph-legend .lg-ghost { color: #cfcfcf; }
 #graph-legend .lg-dead { color: #b00; }
-#graph-legend .lg-vis { color: #888; }
+#graph-legend .lg-vis { color: #767676; }
 #graph-legend .lg-arr { color: #111; }
 
 /* The reader's followed path, as an indented box-drawing tree: followed
@@ -617,17 +648,47 @@ footer {
   height: 200px;
   margin: 4px 0 8px;
   background: #e8e6e0;
-  color: #999;
+  color: #767676;
   font-family: "Overpass Mono", monospace;
   font-size: 11px;
   text-transform: lowercase;
   letter-spacing: 0.05em;
 }
+/* Skip-to-content link — visually hidden until focused (keyboard users). */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: 16px;
+  z-index: 10000;
+  padding: 8px 16px;
+  background: #fff;
+  color: #0000EE;
+  font-family: "Overpass Mono", monospace;
+  font-size: 12px;
+  text-decoration: underline;
+  border: 1px solid #0000EE;
+}
+.skip-link:focus {
+  top: 16px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 </style>
 </head>
 <body>
-<div id="canvas"></div>
-<footer><span id="hyperlinks-title">Hyperlinks</span>. A project by Keyan Thanner, supervised by <a id="credit-link" href="https://www.ktell.de" target="_blank" rel="noopener">Jun. Prof. Katharina Köhler</a>. <span id="legal-link">See legals</span>. <span id="doc-link">See documentation</span>. · <span id="fx-toggle" title="hover interactions">✦ on</span></footer>
+<a class="skip-link" href="#canvas">Skip to content</a>
+<h1 class="visually-hidden">Hyperlinks — An interactive web essay by Keyan Thanner</h1>
+<main id="canvas" role="main" aria-live="polite" aria-label="Interactive fragment canvas"></main>
+<footer><span id="hyperlinks-title" role="button" tabindex="0" aria-label="Hyperlinks session statistics">Hyperlinks</span>. A project by Keyan Thanner, supervised by <a id="credit-link" href="https://www.ktell.de" target="_blank" rel="noopener">Jun. Prof. Katharina Köhler</a>. <span id="legal-link" role="button" tabindex="0">See legals</span>. <span id="doc-link" role="button" tabindex="0">See documentation</span>. · <span id="fx-toggle" role="button" tabindex="0" aria-pressed="true" title="hover interactions">✦ on</span></footer>
 
 <div id="colophon" aria-hidden="true">you have followed every link — the entire mesh.</div>
 
@@ -638,45 +699,45 @@ footer {
       <h2>Documentation</h2>
       <!-- Placeholder content — replace with the real documentation. -->
 
-      <div class="fragment-caption">about</div>
+      <h3 class="fragment-caption">about</h3>
       <p>Placeholder text. This documentation reuses the same visual language as the fragments: the serif body, the small monospace captions, and the cursor interactions. Move your cursor across this text and the words nearest the pointer reveal the machine type beneath the prose.</p>
       <p>The whole window responds to the cursor the way a fragment does — a little weight, a little drift. Replace these paragraphs with the actual writing about the project, its concepts, and how to read it.</p>
 
-      <div class="fragment-caption">figure</div>
+      <h3 class="fragment-caption">figure</h3>
       <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
       <p class="note">A caption for the image placeholder. Captions behave like the notes under a fragment's media — they shift to monospace under the cursor too.</p>
 
-      <div class="fragment-caption">notes</div>
+      <h3 class="fragment-caption">notes</h3>
       <p>Another placeholder block. Add as many text and image blocks as the documentation needs; everything here is already loaded with the page, not spawned on demand.</p>
 
       <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
       <p class="note">Second image placeholder with its own caption.</p>
 
-      <div class="fragment-caption">how to read it</div>
+      <h3 class="fragment-caption">how to read it</h3>
       <p>Placeholder text for testing scroll. The hyperlink sits quietly inside a sentence, underlined and blue, waiting. Most of the time we do not think about it: we click and we move on. But the hyperlink is not just a feature of the web — it is the web's most fundamental idea.</p>
       <p>Without it, there are only documents, floating separately, unreachable from one another. The link is what makes connection possible: one document pointing to another, across servers, across countries, across languages, without asking anyone's permission.</p>
       <p>You do not need to apply to link to something. You do not need to own the content you are pointing to. You just link. That freedom is a radical idea, and it was built into the architecture of the web from the very beginning.</p>
 
-      <div class="fragment-caption">structure</div>
+      <h3 class="fragment-caption">structure</h3>
       <p>The structure that emerges from billions of these connections is not a library, not a filing cabinet, not a tree with a root and branches — it is something stranger: a network without a centre. A mesh, not a tree.</p>
       <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
       <p class="note">Third image placeholder — a diagram would go here.</p>
 
-      <div class="fragment-caption">decay</div>
+      <h3 class="fragment-caption">decay</h3>
       <p>A broken link is called link rot. Like organic matter, links decay over time. A page moves, a server goes offline, a company shuts down, a URL structure changes — and suddenly a connection that existed becomes a dead end.</p>
       <p>The web's memory is shorter than we think. This is partly a technical problem, but it is also a structural one: the hyperlink points outward, but it receives no signal when the thing it points to disappears. There is no notification of death; the connection simply stops working.</p>
 
-      <div class="fragment-caption">platforms</div>
+      <h3 class="fragment-caption">platforms</h3>
       <p>Something changed. The web that exists today is not the web that was designed. For most people, most of the time, the web is three or four platforms — a search engine, a social network, a video service, a marketplace. These platforms are not the web; they are built on top of it.</p>
       <p>A platform is, by definition, centralised. All content flows through one company's servers; all connections are mediated by one company's algorithms. The open web of interconnected documents has been replaced, for most users, by a curated stream you scroll through but do not truly navigate.</p>
 
-      <div class="fragment-caption">alternatives</div>
+      <h3 class="fragment-caption">alternatives</h3>
       <p>There is still a small but persistent movement of people who maintain personal sites outside of platforms — the indie web, the small web. They use feeds instead of algorithms, link to each other directly, and write for readers rather than for engagement metrics.</p>
       <p>It is a minority practice now, but it is a living memory of what the web was once like, and what it could still be: a space of genuine connection, built from individual choices to link.</p>
       <div class="doc-img" role="img" aria-label="image placeholder">image placeholder</div>
       <p class="note">Final image placeholder — end of the scroll test content.</p>
 
-      <div class="fragment-caption">colophon</div>
+      <h3 class="fragment-caption">colophon</h3>
       <p>End of placeholder documentation. Replace everything above with the real text and images. Scroll back up to confirm the hover material-shift stays aligned after scrolling.</p>
     </div>
   </div>
@@ -689,15 +750,15 @@ footer {
       <h2>Legal</h2>
       <!-- Placeholder legal text — replace with the real imprint / privacy notice. -->
 
-      <div class="fragment-caption">imprint</div>
+      <h3 class="fragment-caption">imprint</h3>
       <p>Placeholder imprint. Hyperlinks — a project by Keyan Thanner, supervised by Jun. Prof. Katharina Köhler. Replace this with the responsible person, address, and contact details required for the imprint.</p>
       <p>Contact: placeholder@example.com. Replace with the actual contact address.</p>
 
-      <div class="fragment-caption">privacy</div>
+      <h3 class="fragment-caption">privacy</h3>
       <p>Placeholder privacy notice. This page is static and self-contained: fonts are hosted locally and there are no analytics, cookies, or third-party trackers. Replace this paragraph with the real privacy statement once finalised.</p>
       <p>If any external content is embedded — for example a remote video or an embedded web page — note here what data those third parties may receive when you load it.</p>
 
-      <div class="fragment-caption">copyright</div>
+      <h3 class="fragment-caption">copyright</h3>
       <p>Placeholder copyright notice. © Keyan Thanner. All texts and images are placeholders until replaced. State here the licence and any attributions for third-party material.</p>
     </div>
   </div>
@@ -705,13 +766,13 @@ footer {
 
 <!-- Hidden easter egg: double-click "Hyperlinks" in the footer. -->
 <div id="stats-overlay" class="doc-overlay" aria-hidden="true">
-  <div class="stats-modal" role="dialog" aria-modal="true" aria-label="Session">
-    <button class="doc-close" aria-label="Close">×</button>
+  <div class="stats-modal" role="dialog" aria-modal="true" aria-label="Session statistics">
+    <button class="doc-close" aria-label="Close session statistics">×</button>
     <div class="doc-content">
       <h2>session</h2>
       <p id="stats-count"></p>
-      <div class="fragment-caption">the mesh</div>
-      <svg id="stats-graph" viewBox="0 0 760 460" preserveAspectRatio="xMidYMid meet" aria-label="Fragment graph"></svg>
+      <h3 class="fragment-caption">the mesh</h3>
+      <svg id="stats-graph" role="img" viewBox="0 0 760 460" preserveAspectRatio="xMidYMid meet" aria-label="Fragment graph"></svg>
       <div id="graph-legend">
         <span><b class="lg-frag">▢</b> fragment</span>
         <span><b class="lg-ghost">▢</b> missing target</span>
@@ -719,7 +780,7 @@ footer {
         <span><b class="lg-vis">▣</b> visited</span>
         <span><b class="lg-arr">→</b> link direction</span>
       </div>
-      <div class="fragment-caption">your path</div>
+      <h3 class="fragment-caption">your path</h3>
       <pre id="stats-path"></pre>
     </div>
   </div>
@@ -1142,6 +1203,8 @@ function cssFade(el, id) {
   if (el) {
     el.classList.remove('shown');
     el.classList.add('fading');
+    el.setAttribute('aria-hidden', 'true');
+    el.querySelectorAll('a, [tabindex]').forEach(child => child.setAttribute('tabindex', '-1'));
   }
   dissolveStart[id] = performance.now();
   timers[id] = setTimeout(() => removeFragment(id), FADE_DURATION);
@@ -1167,6 +1230,10 @@ function fadeOut(id) {
 
     // Reset any in-flight hover styles so the capture is clean.
     el.querySelectorAll('.word').forEach(w => { w.classList.remove('mat'); w.style.width = ''; w.style.fontSize = ''; });
+
+    // Hide from screen readers & keyboard users as it starts to dissolve
+    el.setAttribute('aria-hidden', 'true');
+    el.querySelectorAll('a, [tabindex]').forEach(child => child.setAttribute('tabindex', '-1'));
 
     if (typeof html2canvas !== 'function') { cssFade(el, id); return; }
 
@@ -1409,7 +1476,7 @@ function mediaMarkup(frag) {
     // Iframes swallow mouse events, so the cursor-drag never reaches the page.
     // A transparent shield over the embed catches hover (enabling the drag) and
     // steps aside on click so the embed stays usable.
-    media = `<div class="media-wrap"><iframe class="media" src="${frag.src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"${allow}></iframe><div class="iframe-shield" title="click to use · drag to move"></div></div>`;
+    media = `<div class="media-wrap"><iframe class="media" title="${frag.title || 'Interactive iframe embed'}" src="${frag.src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"${allow}></iframe><div class="iframe-shield" title="click to use · drag to move"></div></div>`;
   }
   return media + notesMarkup(frag.notes);
 }
@@ -1421,22 +1488,39 @@ function placeFragment(id) {
   const div = document.createElement('div');
   div.id = id;
   div.className = `fragment ${frag.type}`;
+  div.setAttribute('aria-hidden', 'true'); // Hide initially until fully shown/revealed
   if (frag.type === 'text') {
-    div.innerHTML = `<div class="fragment-caption">${id}</div>${frag.html}`;
+    div.innerHTML = `<h2 class="fragment-caption">${id}</h2>${frag.html}`;
   } else {
     // Resource fragments (iframe/media) caption with their title (or id).
-    div.innerHTML = `<div class="fragment-caption">${frag.title || id}</div>` + mediaMarkup(frag);
+    div.innerHTML = `<h2 class="fragment-caption">${frag.title || id}</h2>` + mediaMarkup(frag);
   }
 
   // Mark this fragment's own links: greyish blue if the target doesn't exist
   // yet, presence dot if the target is already on the canvas.
+  // href="#" makes the link keyboard-focusable and announced as a link by
+  // screen readers; preventDefault() in the click handler stops the hash jump.
   div.querySelectorAll('a.link').forEach(a => {
+    a.href = '#';
     const t = a.dataset.target;
     if (!FRAGMENTS[t]) a.classList.add('unwritten');
     else if (document.getElementById(t)) a.classList.add('on-canvas');
   });
   // Mark every link anywhere that points at this newly-placed fragment.
   document.querySelectorAll(`a.link[data-target="${id}"]`).forEach(a => a.classList.add('on-canvas'));
+
+  // Make peek triggers keyboard-accessible: tabindex so they can be focused
+  // with Tab, role + aria-label so screen readers explain what they do.
+  div.querySelectorAll('.peek-note').forEach(el => {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'Show definition');
+  });
+  div.querySelectorAll('.peek-img').forEach(el => {
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'Show image: ' + (el.dataset.cap || 'preview'));
+  });
 
   // Wrap words in all paragraphs (text fragments and media notes);
   // the caption is untouched because it is a <div>.
@@ -1468,6 +1552,7 @@ function placeFragment(id) {
     div.style.top  = pos.y + 'px';
     div.style.opacity = '';            // hand opacity back to the .shown class
     div.style.visibility = '';
+    div.setAttribute('aria-hidden', 'false');
     requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('shown')));
   };
 
@@ -1488,6 +1573,7 @@ function placeFragment(id) {
           if (!document.getElementById(id)) return;
           div.classList.add('shown');
           div.style.visibility = '';
+          div.setAttribute('aria-hidden', 'false');
           div.style.transition = 'none';            // appear instantly (already faded in)
           requestAnimationFrame(() => { div.style.transition = ''; });
         }
@@ -1683,8 +1769,10 @@ const fxToggle = document.getElementById('fx-toggle');
 fxToggle.addEventListener('click', () => {
   fxOn = !fxOn;
   fxToggle.textContent = fxOn ? '✦ on' : '✦ off';
+  fxToggle.setAttribute('aria-pressed', fxOn ? 'true' : 'false');
   if (!fxOn) { resetWords(); setHoverFrag(null); }   // clear any active mono/drag, ease home
 });
+fxToggle.addEventListener('keydown', handleKeyClick);
 
 /* ============================================================
    12. CURSOR DRAG — moving the cursor over a fragment drags it a
@@ -1774,28 +1862,82 @@ document.querySelectorAll('.doc-modal').forEach(m => {
   m.addEventListener('scroll', () => { if (hoverFrag === m) resetWords(); });
 });
 
+let previousActiveElement = null;
+
+function trapFocus(e, modalEl) {
+  if (e.key !== 'Tab') return;
+  const focusables = modalEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusables.length === 0) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (e.shiftKey) {
+    if (document.activeElement === first) {
+      last.focus();
+      e.preventDefault();
+    }
+  } else {
+    if (document.activeElement === last) {
+      first.focus();
+      e.preventDefault();
+    }
+  }
+}
+
 function openModal(overlay) {
+  previousActiveElement = document.activeElement;
   document.body.classList.add('modal-open');
   overlay.classList.add('open');
   overlay.setAttribute('aria-hidden', 'false');
-  overlay.querySelector('.doc-close').focus();
+  const modal = overlay.querySelector('.doc-modal, .stats-modal');
+  const closeBtn = modal.querySelector('.doc-close');
+  closeBtn.focus();
+  
+  if (overlay._focusTrap) {
+    overlay.removeEventListener('keydown', overlay._focusTrap);
+  }
+  overlay._focusTrap = (e) => trapFocus(e, modal);
+  overlay.addEventListener('keydown', overlay._focusTrap);
 }
+
 function closeModal(overlay) {
   overlay.classList.remove('open');
   overlay.setAttribute('aria-hidden', 'true');
+  if (overlay._focusTrap) {
+    overlay.removeEventListener('keydown', overlay._focusTrap);
+    delete overlay._focusTrap;
+  }
   // Only un-blur the canvas once no modal is left open.
   if (!document.querySelector('.doc-overlay.open')) document.body.classList.remove('modal-open');
+  if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+    previousActiveElement.focus();
+  }
+}
+
+function handleKeyClick(e) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    e.target.click();
+  }
 }
 
 document.getElementById('doc-link').addEventListener('click', () => openModal(document.getElementById('doc-overlay')));
+document.getElementById('doc-link').addEventListener('keydown', handleKeyClick);
 document.getElementById('legal-link').addEventListener('click', () => openModal(document.getElementById('legal-overlay')));
+document.getElementById('legal-link').addEventListener('keydown', handleKeyClick);
 
 document.querySelectorAll('.doc-overlay').forEach(overlay => {
   overlay.querySelector('.doc-close').addEventListener('click', () => closeModal(overlay));
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') document.querySelectorAll('.doc-overlay.open').forEach(closeModal);
+  if (e.key === 'Escape') {
+    if (peekEl) {
+      closePeek();
+      e.stopPropagation();
+      return;
+    }
+    document.querySelectorAll('.doc-overlay.open').forEach(closeModal);
+  }
 });
 
 /* ============================================================
@@ -2059,6 +2201,12 @@ function showStats() {
 }
 
 document.getElementById('hyperlinks-title').addEventListener('dblclick', showStats);
+document.getElementById('hyperlinks-title').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    showStats();
+  }
+});
 
 /* ============================================================
    14c. INLINE PEEKS — hover tooltips that show, not navigate.
@@ -2163,7 +2311,9 @@ function openImagePeek(trigger) {
     cap.textContent = trigger.dataset.cap;
     card.appendChild(cap);
   }
+  card.id = 'peek-card-active';
   peekEl = card; peekTrigger = trigger;
+  trigger.setAttribute('aria-describedby', 'peek-card-active');
 
   const img = new Image();
   img.onload = () => {
@@ -2200,7 +2350,9 @@ function openResPeek(trigger) {
   tip.innerHTML = `<span class="peek-name"></span><span class="peek-url"></span>`;
   tip.querySelector('.peek-name').textContent = label;
   tip.querySelector('.peek-url').textContent = host;
+  tip.id = 'peek-card-active';
   peekEl = tip; peekTrigger = trigger;
+  trigger.setAttribute('aria-describedby', 'peek-card-active');
   materializeNode(tip, trigger);
 }
 
@@ -2212,7 +2364,9 @@ function openNotePeek(trigger) {
   const card = document.createElement('div');
   card.className = 'peek-note-card' + (trigger.dataset.kind ? ' ' + trigger.dataset.kind : '');
   card.innerHTML = body.innerHTML;
+  card.id = 'peek-card-active';
   peekEl = card; peekTrigger = trigger;
+  trigger.setAttribute('aria-describedby', 'peek-card-active');
   materializeNode(card, trigger);
 }
 
@@ -2243,6 +2397,9 @@ function startPeekFade() {
 function closePeek() {
   clearTimeout(peekTimer); peekTimer = null;
   cancelAnimationFrame(peekFadeRAF); peekFadeRAF = null;
+  if (peekTrigger) {
+    peekTrigger.removeAttribute('aria-describedby');
+  }
   peekTrigger = null;
   if (peekFx) { peekFx.remove(); peekFx = null; }   // drop any in-flight materialize overlay
   const node = peekEl; peekEl = null;
@@ -2272,6 +2429,29 @@ document.addEventListener('pointerout', e => {
   if (trigger && trigger.contains(e.relatedTarget)) return;   // still inside
   closePeek();
 }, { passive: true });
+
+// Keyboard accessibility: open peeks on focus, close on blur — mirrors the
+// pointer handlers above so Tab / Shift-Tab works for screen readers.
+document.addEventListener('focusin', e => {
+  const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
+  if (!trigger || trigger === peekTrigger) return;
+  clearTimeout(peekTimer);
+  closePeek();
+  peekTimer = setTimeout(() => {
+    if (trigger.classList.contains('peek-img')) openImagePeek(trigger);
+    else if (trigger.classList.contains('peek-note')) openNotePeek(trigger);
+    else openResPeek(trigger);
+    startPeekFade();
+  }, PEEK_DELAY);
+});
+document.addEventListener('focusout', e => {
+  const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
+  if (!trigger) return;
+  // Don't close if focus moved to something still inside the same trigger.
+  if (trigger.contains(e.relatedTarget)) return;
+  closePeek();
+});
+
 window.addEventListener('scroll', closePeek, { capture: true, passive: true });
 window.addEventListener('resize', closePeek, { passive: true });
 
@@ -2283,6 +2463,11 @@ window.addEventListener('resize', closePeek, { passive: true });
    fragments), then a "click to enter" prompt below the title. Clicking
    anywhere dismisses the overlay and reveals the entry fragment. */
 function runIntro() {
+  const canvas = document.getElementById('canvas');
+  const footer = document.querySelector('footer');
+  if (canvas) canvas.setAttribute('aria-hidden', 'true');
+  if (footer) footer.setAttribute('aria-hidden', 'true');
+
   const whiteBg = document.createElement('div');
   whiteBg.className = 'intro-white';
   document.body.appendChild(whiteBg);
@@ -2479,13 +2664,27 @@ function runIntro() {
     titleHoverReady = true;
     cacheIntroWords();
     title.addEventListener('click', enterSite, { once: true });
+    // Keyboard: Enter or Space on the title also enters.
+    title.setAttribute('tabindex', '0');
+    title.setAttribute('role', 'button');
+    title.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enterSite(); }
+    }, { once: true });
+    title.focus();   // move focus to the title so it's immediately actionable
   }, 13000);
+
+  // Allow Escape to skip the intro at any time (keyboard a11y).
+  function handleIntroKey(e) {
+    if (e.key === 'Escape') { enterSite(); document.removeEventListener('keydown', handleIntroKey); }
+  }
+  document.addEventListener('keydown', handleIntroKey);
 
   // Only the title is clickable — clicking it enters the site.
   function enterSite() {
     if (entered) return;
     entered = true;
     clearInterval(bgTimer);
+    document.removeEventListener('keydown', handleIntroKey);   // clean up Escape listener
 
     // Stop any intro/background materialize still in flight. Otherwise its fx
     // canvas keeps painting type after the blast, and its onDone re-shows the
@@ -2554,12 +2753,22 @@ function runIntro() {
     setTimeout(() => {
       placeFragment(START_ID);           // ready the entry fragment behind the white
       whiteBg.classList.add('leaving');  // only the white fades, revealing the canvas
+      if (canvas) canvas.setAttribute('aria-hidden', 'false');
+      if (footer) footer.removeAttribute('aria-hidden');
       setTimeout(() => { overlay.remove(); whiteBg.remove(); vignette.remove(); }, 800);
     }, DUR + 3000);
   }
 }
 
 runIntro();
+
+// Hook skip-to-content click to skip the intro immediately if active
+document.querySelector('.skip-link').addEventListener('click', e => {
+  if (document.getElementById('intro')) {
+    e.preventDefault();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  }
+});
 </script>
 </body>
 </html>
