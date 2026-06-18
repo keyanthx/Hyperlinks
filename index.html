@@ -51,7 +51,7 @@ body {
 }
 
 /* While the documentation modal is open, blur the canvas behind it
-   (echoes the fade-out dissolve). Footer/tuner/modal are outside #canvas
+   (echoes the fade-out dissolve). Footer/modal are outside #canvas
    and stay sharp. */
 body.modal-open #canvas { filter: blur(4px); }
 
@@ -292,12 +292,12 @@ footer {
 }
 
 /* The footer is non-interactive except for its toggles. */
-#sound-toggle, #fx-toggle, #colophon-test {
+#fx-toggle {
   pointer-events: auto;
   cursor: pointer;
   color: #777;
 }
-#sound-toggle:hover, #fx-toggle:hover, #colophon-test:hover { color: #111; }
+#fx-toggle:hover { color: #111; }
 
 /* "Read the whole web" easter egg — a quiet line that flashes once you've
    opened every fragment. */
@@ -319,6 +319,96 @@ footer {
   transition: opacity 0.8s ease;
 }
 #colophon.show { opacity: 1; }
+
+/* ============================================================
+   Opening sequence — a full-screen overlay shown on first load.
+   The title and credit appear at random spots (like fragments),
+   then a "click to enter" prompt; clicking anywhere enters the site.
+   ============================================================ */
+#intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: transparent;   /* the white is a separate layer (.intro-white) so content never fades with it */
+  cursor: pointer;
+  perspective: 1200px;
+  perspective-origin: 50% 45%;
+}
+
+/* The white backdrop, behind the content. Fades on its own to reveal the
+   canvas — the content (a separate layer) never fades, it only flies away. */
+.intro-white {
+  position: fixed;
+  inset: 0;
+  z-index: 8999;
+  background: #fff;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.intro-white.leaving { opacity: 0; }
+
+/* Words inside the background fragments — inline-block so they can scatter
+   in Z (translateZ) when the blast fires. */
+.bg-word { display: inline-block; }
+
+/* Soft blur on the screen's borders during the blast — strong at the rim,
+   clear in the centre — so content blurs as it rushes off the edges. */
+.intro-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask: radial-gradient(ellipse 78% 78% at 50% 50%, transparent 58%, #000 100%);
+          mask: radial-gradient(ellipse 78% 78% at 50% 50%, transparent 58%, #000 100%);
+}
+
+.intro-item {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  color: #111;
+}
+.intro-item.shown { opacity: 1; }
+
+.intro-title {
+  font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
+  font-size: clamp(40px, 7vw, 88px);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  /* Same animated underline sweep as a fragment link (a.link). */
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 100% 100%;
+  background-size: 0% 3px;
+  transition: opacity 0.6s ease, background-size 0.3s ease-in-out, color 0.6s ease;
+}
+/* Hover the title like a link: blue + the underline sweeps in from the left. */
+.intro-title:hover {
+  color: #0000EE;
+  background-position: 0 100%;
+  background-size: 100% 3px;
+}
+/* Resting link-blue, applied once "click to enter" appears. */
+.intro-title.as-link { color: #0000EE; }
+
+.intro-credit {
+  font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
+  font-size: clamp(14px, 1.6vw, 18px);
+  white-space: nowrap;
+}
+
+.intro-enter {
+  font-family: "Overpass Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #777;
+}
+.intro-enter.shown { animation: intro-pulse 1.8s ease-in-out infinite; }
+@keyframes intro-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 
 /* Hidden easter egg: double-click "Hyperlinks" in the footer opens a small
    session window. The title catches the dblclick but stays visually plain. */
@@ -439,55 +529,11 @@ footer {
    7. Drag-tuning panel (dev tool) — live sliders for the
    cursor-drag physics. Remove this block + its JS to ship.
    ============================================================ */
-#tuner {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 7000;
-  width: 214px;
-  padding: 8px 10px 10px;
-  font-family: "Overpass Mono", monospace;
-  font-size: 11px;
-  color: #333;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  backdrop-filter: blur(2px);
-  user-select: none;
-}
-#tuner .tuner-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #999;
-  cursor: pointer;
-  margin-bottom: 6px;
-}
-#tuner .tuner-reset {
-  cursor: pointer;
-  color: #0000EE;
-  text-transform: none;
-  letter-spacing: 0;
-}
-#tuner.collapsed .tuner-body { display: none; }
-#tuner .row {
-  display: grid;
-  grid-template-columns: 74px 1fr 32px;
-  align-items: center;
-  gap: 6px;
-  margin: 5px 0;
-}
-#tuner label { color: #555; }
-#tuner input[type=range] { width: 100%; }
-#tuner .val { text-align: right; color: #111; }
 
 /* ============================================================
    8. Modal windows (documentation, legal) — opened from the
    footer. The canvas behind is blurred (body.modal-open #canvas)
-   and grayed by the overlay wash; footer + tuner stay sharp.
+   and grayed by the overlay wash; footer stays sharp.
    ============================================================ */
 .doc-overlay {
   position: fixed;
@@ -563,7 +609,7 @@ footer {
 </head>
 <body>
 <div id="canvas"></div>
-<footer><span id="hyperlinks-title">Hyperlinks</span>. A project by Keyan Thanner, supervised by <a id="credit-link" href="https://www.ktell.de" target="_blank" rel="noopener">Jun. Prof. Katharina Köhler</a>. <span id="legal-link">See legals</span>. <span id="doc-link">See documentation</span>. · <span id="fx-toggle" title="hover interactions">✦ on</span> · <span id="sound-toggle">♪ off</span> · <span id="colophon-test" title="test the read-the-whole-web easter egg">[test]</span></footer>
+<footer><span id="hyperlinks-title">Hyperlinks</span>. A project by Keyan Thanner, supervised by <a id="credit-link" href="https://www.ktell.de" target="_blank" rel="noopener">Jun. Prof. Katharina Köhler</a>. <span id="legal-link">See legals</span>. <span id="doc-link">See documentation</span>. · <span id="fx-toggle" title="hover interactions">✦ on</span></footer>
 
 <div id="colophon" aria-hidden="true">you have followed every link — the entire mesh.</div>
 
@@ -732,6 +778,7 @@ const FRAGMENTS = {
 
   'i-miss-how-google-used-to-work': {
     type: 'iframe',
+    title: 'I Miss How Google Used To Work',
     src: 'https://www.youtube-nocookie.com/embed/GvaOUFwXjf4?si=xAXjLgeVYHzufV7B',
     allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
     notes: [
@@ -895,7 +942,6 @@ function fadeOut(id) {
     const el = document.getElementById(id);
     if (!el) { timers[id] = setTimeout(() => removeFragment(id, { rot: true }), FADE_DURATION); return; }
 
-    playDissolve();                  // soft static as the fragment begins to go
     el.style.transform = '';         // drop any cursor lean so the overlay lines up
     followState.delete(el);
 
@@ -927,7 +973,7 @@ function fadeOut(id) {
 
 // Build the overlay .fx canvas (+ reused scratch canvases) for a pixel
 // effect, registered under fxCanvases[id]. Returns its 2d context + scratch.
-function makeFx(id, left, top, cw, ch) {
+function makeFx(id, left, top, cw, ch, parent) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   const cvs = document.createElement('canvas');
@@ -938,7 +984,7 @@ function makeFx(id, left, top, cw, ch) {
   cvs.style.top  = top + 'px';
   const ctx = cvs.getContext('2d');
   ctx.scale(dpr, dpr);
-  document.getElementById('canvas').appendChild(cvs);
+  (parent || document.getElementById('canvas')).appendChild(cvs);
   fxCanvases[id] = cvs;
 
   // Scratch canvases: one for the blur pre-pass, one for the mosaic downscale.
@@ -994,16 +1040,19 @@ function runPixelDissolve({ id, src, left, top, cw, ch }) {
 // Materialize: coarse+faint -> sharp+opaque over MATERIALIZE_DURATION
 // (smooth, the reverse of the dissolve). On finish, removes the overlay
 // and calls onDone() to hand control back to the real element.
-function runPixelMaterialize({ id, src, left, top, cw, ch, onDone }) {
-  const { ctx, scratch } = makeFx(id, left, top, cw, ch);
+function runPixelMaterialize({ id, src, left, top, cw, ch, onDone, parent, duration, targetOpacity = 1 }) {
+  const { ctx, scratch } = makeFx(id, left, top, cw, ch, parent);
+  const dur = duration ?? MATERIALIZE_DURATION;
   const start = performance.now();
   function frame(now) {
     if (!fxCanvases[id]) return;             // removed mid-spawn -> stop
-    const t = Math.min(1, (now - start) / MATERIALIZE_DURATION);
-    drawPixelStage(ctx, src, scratch, cw, ch, 1 - t, MIN_OPACITY + t * (1 - MIN_OPACITY));
+    const t = Math.min(1, (now - start) / dur);
+    drawPixelStage(ctx, src, scratch, cw, ch, 1 - t, MIN_OPACITY + t * (targetOpacity - MIN_OPACITY));
     if (t < 1) { requestAnimationFrame(frame); return; }
-    if (fxCanvases[id]) { fxCanvases[id].remove(); delete fxCanvases[id]; }
+    // Show the real element before removing the canvas so they overlap for one
+    // paint — prevents a 1-frame flash to 0% opacity (visible at low opacities).
     if (onDone) onDone();
+    if (fxCanvases[id]) { fxCanvases[id].remove(); delete fxCanvases[id]; }
   }
   requestAnimationFrame(frame);
 }
@@ -1159,7 +1208,8 @@ function placeFragment(id) {
   if (frag.type === 'text') {
     div.innerHTML = `<div class="fragment-caption">${id}</div>${frag.html}`;
   } else {
-    div.innerHTML = mediaMarkup(frag);
+    // Resource fragments (iframe/media) caption with their title (or id).
+    div.innerHTML = `<div class="fragment-caption">${frag.title || id}</div>` + mediaMarkup(frag);
   }
 
   // Mark this fragment's own links: greyish blue if the target doesn't exist
@@ -1261,7 +1311,6 @@ document.addEventListener('click', e => {
 
   if (link.classList.contains('dead')) {
     // The connection simply stops working.
-    playDead();
     show404(e.clientX, e.clientY);
     return;
   }
@@ -1269,12 +1318,10 @@ document.addEventListener('click', e => {
   // Dangling link: the target fragment hasn't been written yet. Behave like a
   // dead link (404) rather than crashing — it comes alive once the fragment exists.
   if (!FRAGMENTS[link.dataset.target]) {
-    playDead();
     show404(e.clientX, e.clientY);
     return;
   }
 
-  playClick();
   link.classList.add('visited');
   followedEdges.add(link.dataset.from + '>' + link.dataset.target);   // record the journey
   reveal(link.dataset.target);
@@ -1403,87 +1450,6 @@ document.addEventListener('selectionchange', () => {
   if (s && !s.isCollapsed) clearAllMat();
 });
 
-/* ============================================================
-   11. SOUND — synthesized (Web Audio), no asset files.
-   Muted by default; toggled from the footer. The AudioContext is
-   created on that user gesture to satisfy autoplay policies.
-   ============================================================ */
-let soundOn = false;
-let actx = null;
-
-function ensureAudio() {
-  if (!actx) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) actx = new AC();
-  }
-  if (actx && actx.state === 'suspended') actx.resume();
-}
-
-// Short white-noise buffer (seconds), used by the noise-based sounds.
-function noiseBuffer(seconds) {
-  const n = Math.floor(actx.sampleRate * seconds);
-  const buf = actx.createBuffer(1, n, actx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
-  return buf;
-}
-
-// Typewriter "tk" — a brief band-passed noise burst.
-function playClick() {
-  if (!soundOn || !actx) return;
-  const now = actx.currentTime;
-  const src = actx.createBufferSource();
-  src.buffer = noiseBuffer(0.04);
-  const bp = actx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.8;
-  const g = actx.createGain();
-  g.gain.setValueAtTime(0.06, now);
-  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
-  src.connect(bp).connect(g).connect(actx.destination);
-  src.start(now); src.stop(now + 0.06);
-}
-
-// Soft static/whoosh as a fragment dissolves (lowpass opens then closes).
-function playDissolve() {
-  if (!soundOn || !actx) return;
-  const now = actx.currentTime;
-  const src = actx.createBufferSource();
-  src.buffer = noiseBuffer(0.7);
-  const lp = actx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.setValueAtTime(300, now);
-  lp.frequency.linearRampToValueAtTime(1800, now + 0.25);
-  lp.frequency.linearRampToValueAtTime(200, now + 0.7);
-  const g = actx.createGain();
-  g.gain.setValueAtTime(0.0001, now);
-  g.gain.linearRampToValueAtTime(0.05, now + 0.15);
-  g.gain.linearRampToValueAtTime(0.0001, now + 0.7);
-  src.connect(lp).connect(g).connect(actx.destination);
-  src.start(now); src.stop(now + 0.72);
-}
-
-// Downward blip for a dead link (404).
-function playDead() {
-  if (!soundOn || !actx) return;
-  const now = actx.currentTime;
-  const osc = actx.createOscillator();
-  osc.type = 'square';
-  osc.frequency.setValueAtTime(330, now);
-  osc.frequency.exponentialRampToValueAtTime(90, now + 0.15);
-  const g = actx.createGain();
-  g.gain.setValueAtTime(0.05, now);
-  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-  osc.connect(g).connect(actx.destination);
-  osc.start(now); osc.stop(now + 0.17);
-}
-
-const soundToggle = document.getElementById('sound-toggle');
-soundToggle.addEventListener('click', () => {
-  soundOn = !soundOn;
-  soundToggle.textContent = soundOn ? '♪ on' : '♪ off';
-  if (soundOn) { ensureAudio(); playClick(); }
-});
-
 // Hover-interaction toggle: turns the material-shift + cursor-drag off/on
 // for all content (canvas fragments, documentation, legal).
 const fxToggle = document.getElementById('fx-toggle');
@@ -1565,77 +1531,11 @@ function startPhysics() {
    WEIGHT     — heaviness/inertia; bigger = slower, gentler start
    MAX_OFFSET — soft limit on travel in px (smooth, never a hard wall)
    ============================================================ */
-let DRAG_PULL  = 0.015;
-let SPRING     = 0.025;
-let DAMPING    = 0.9;
-let WEIGHT     = 7.5;
-let MAX_OFFSET = 10;
-
-/* On-screen sliders for the values above (dev tool). get/set closures
-   read & reassign the let vars; startPhysics() picks up changes next frame. */
-const TUNABLES = [
-  { key: 'DRAG_PULL',  min: 0,     max: 0.3,  step: 0.005, get: () => DRAG_PULL,  set: v => DRAG_PULL  = v },
-  { key: 'SPRING',     min: 0.005, max: 0.2,  step: 0.005, get: () => SPRING,     set: v => SPRING     = v },
-  { key: 'DAMPING',    min: 0.5,   max: 0.98, step: 0.01,  get: () => DAMPING,    set: v => DAMPING    = v },
-  { key: 'WEIGHT',     min: 0.5,   max: 8,    step: 0.1,   get: () => WEIGHT,     set: v => WEIGHT     = v },
-  { key: 'MAX_OFFSET', min: 1,     max: 30,   step: 1,     get: () => MAX_OFFSET, set: v => MAX_OFFSET = v },
-];
-
-function buildTuner() {
-  const fmt = v => String(+v.toFixed(3));
-  const panel = document.createElement('div');
-  panel.id = 'tuner';
-
-  const head = document.createElement('div');
-  head.className = 'tuner-head';
-  const title = document.createElement('span');
-  title.textContent = 'drag tuning';
-  const reset = document.createElement('span');
-  reset.className = 'tuner-reset';
-  reset.textContent = 'reset';
-  head.append(title, reset);
-  head.addEventListener('click', e => {
-    if (e.target !== reset) panel.classList.toggle('collapsed');
-  });
-
-  const body = document.createElement('div');
-  body.className = 'tuner-body';
-
-  const resetters = [];
-  for (const t of TUNABLES) {
-    const def = t.get();
-    const row = document.createElement('div');
-    row.className = 'row';
-
-    const label = document.createElement('label');
-    label.textContent = t.key.toLowerCase();
-
-    const range = document.createElement('input');
-    range.type = 'range';
-    range.min = t.min; range.max = t.max; range.step = t.step;
-    range.value = def;
-
-    const val = document.createElement('span');
-    val.className = 'val';
-    val.textContent = fmt(def);
-
-    range.addEventListener('input', () => {
-      const v = parseFloat(range.value);
-      t.set(v);
-      val.textContent = fmt(v);
-    });
-
-    resetters.push(() => { range.value = def; t.set(def); val.textContent = fmt(def); });
-    row.append(label, range, val);
-    body.appendChild(row);
-  }
-
-  reset.addEventListener('click', () => resetters.forEach(fn => fn()));
-
-  panel.append(head, body);
-  document.body.appendChild(panel);
-}
-buildTuner();
+const DRAG_PULL  = 0.03;
+const SPRING     = 0.03;
+const DAMPING    = 0.9;
+const WEIGHT     = 7.4;
+const MAX_OFFSET = 15;
 
 /* ============================================================
    13. MODAL WINDOWS (documentation, legal)
@@ -1706,9 +1606,6 @@ function showColophon() {
   clearTimeout(colophonTimer);
   colophonTimer = setTimeout(() => el.classList.remove('show'), 6000);
 }
-
-// Temporary test button (footer): trigger the colophon without visiting all.
-document.getElementById('colophon-test').addEventListener('click', showColophon);
 
 /* Hidden easter egg: double-click "Hyperlinks" → a session window showing a
    directed graph of the whole fragment mesh. Nodes = fragments; ghost nodes =
@@ -2154,7 +2051,271 @@ window.addEventListener('resize', closePeek);
 /* ============================================================
    15. BOOTSTRAP
    ============================================================ */
-placeFragment(START_ID);
+
+/* Opening sequence: title, then credit (both at random spots, like the
+   fragments), then a "click to enter" prompt below the title. Clicking
+   anywhere dismisses the overlay and reveals the entry fragment. */
+function runIntro() {
+  const whiteBg = document.createElement('div');
+  whiteBg.className = 'intro-white';
+  document.body.appendChild(whiteBg);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'intro';
+  document.body.appendChild(overlay);
+
+  // Material-shift hover (same as the fragments): words near the cursor swap
+  // to Overpass Mono, each sized to its locked width. Self-contained so it
+  // never touches the fragment physics; cleared when the overlay is removed.
+  let introWords = [];
+  let titleHoverReady = false;
+  function cacheIntroWords() {
+    const sel = titleHoverReady
+      ? '.intro-title .word, .intro-credit .word'
+      : '.intro-credit .word';
+    introWords = [...overlay.querySelectorAll(sel)]
+      .map(el => {
+        const r = el.getBoundingClientRect();
+        const base = parseFloat(getComputedStyle(el).fontSize);
+        const fit = Math.min(0.85 * base, r.width / (Math.max(1, el.textContent.length) * MONO_RATIO));
+        return { el, cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, fit };
+      });
+  }
+  overlay.addEventListener('mousemove', e => {
+    if (!fxOn) return;                         // respect the footer's ✦ toggle
+    for (const w of introWords) {
+      if (Math.hypot(w.cx - e.clientX, w.cy - e.clientY) < 40) {
+        w.el.style.width = w.w + 'px';         // lock width before the font swap
+        w.el.style.fontSize = w.fit + 'px';    // mono sized to fit that width
+        w.el.classList.add('mat');
+      } else {
+        w.el.classList.remove('mat');
+        w.el.style.width = '';
+        w.el.style.fontSize = '';
+      }
+    }
+  });
+
+  // Measure an item offscreen, drop it at a free random spot (reusing the
+  // fragment placement), then build it up with the same pixel-materialize the
+  // fragments use. Returns the chosen {x, y, w, h}.
+  let introSeq = 0;
+  function placeItem(el, pos) {
+    el.style.left = '-9999px';
+    el.style.top = '0px';
+    el.style.opacity = '1';            // painted offscreen so html2canvas can snapshot it
+    overlay.appendChild(el);
+    const w = el.offsetWidth, h = el.offsetHeight;
+    if (!pos) {
+      pos = findPosition(w, h) || { x: PAD, y: PAD };
+      placed.push({ id: '__intro__', x: pos.x, y: pos.y, w, h });  // reserve the space
+    }
+    const rect = { x: pos.x, y: pos.y, w, h };
+
+    // Plain opacity-fade reveal (fallback / reduced-motion path).
+    const showNow = () => {
+      el.style.left = pos.x + 'px';
+      el.style.top = pos.y + 'px';
+      el.style.opacity = '';
+      el.style.visibility = '';
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('shown')));
+      cacheIntroWords();
+    };
+
+    if (REDUCED_MOTION || typeof html2canvas !== 'function') { showNow(); return rect; }
+
+    // Snapshot while offscreen & painted, then materialize in place.
+    const fxId = '__intro_fx_' + (introSeq++);
+    html2canvas(el, { backgroundColor: null, scale: 2, logging: false })
+      .then(src => {
+        el.style.left = pos.x + 'px';
+        el.style.top = pos.y + 'px';
+        el.style.opacity = '';
+        el.style.visibility = 'hidden';        // overlay shows the build-up
+        runPixelMaterialize({
+          id: fxId, src, left: pos.x, top: pos.y, cw: w, ch: h, parent: overlay, duration: MATERIALIZE_DURATION * 2,
+          onDone: () => {
+            el.classList.add('shown');
+            el.style.visibility = '';
+            el.style.transition = 'none';        // already faded in via the build-up
+            requestAnimationFrame(() => { el.style.transition = ''; });
+            cacheIntroWords();                   // word centers are final now
+          }
+        });
+      })
+      .catch(showNow);
+
+    return rect;
+  }
+
+  // Background ghost fragments: text fragments at 8% opacity, no interaction.
+  // Start immediately on load, every 1.5 s.
+  const bgFragIds = Object.keys(FRAGMENTS).filter(id => FRAGMENTS[id].type === 'text');
+  let bgTimer = null;
+  const bgFragQueue = [];
+  const BG_MAX = 8;
+  function spawnBgFragment() {
+    if (!document.getElementById('intro')) return;
+    // Fade out and remove the oldest if at the limit.
+    if (bgFragQueue.length >= BG_MAX) {
+      const oldest = bgFragQueue.shift();
+      oldest.style.opacity = '0';
+      setTimeout(() => oldest.remove(), 1200);
+    }
+    const id = bgFragIds[Math.floor(Math.random() * bgFragIds.length)];
+    const frag = FRAGMENTS[id];
+    const div = document.createElement('div');
+    // opacity:1 so html2canvas can snapshot it offscreen; visibility hidden after placement
+    div.style.cssText = 'position:absolute;width:min(380px,86vw);opacity:1;left:-9999px;top:0;pointer-events:none;transform-style:preserve-3d;';
+    div.innerHTML = `<div class="fragment-caption">${id}</div>${frag.html}`;
+    // Wrap each word so it can scatter in Z during the blast (keeps tags intact).
+    div.querySelectorAll('p, .fragment-caption').forEach(p => {
+      p.style.transformStyle = 'preserve-3d';
+      p.innerHTML = p.innerHTML.replace(/(^|<\/?[^>]+>|\s+)([^\s<]+)/g, '$1<span class="bg-word">$2</span>');
+    });
+    overlay.insertBefore(div, overlay.firstChild);   // behind the title/credit
+    const w = div.offsetWidth, h = div.offsetHeight;
+    const x = PAD + Math.random() * Math.max(0, window.innerWidth  - w - 2 * PAD);
+    const y = PAD + Math.random() * Math.max(0, window.innerHeight - h - 2 * PAD);
+    bgFragQueue.push(div);
+
+    const fxId = '__bgfrag_' + (introSeq++);
+    html2canvas(div, { backgroundColor: null, scale: 2, logging: false })
+      .then(src => {
+        if (!document.getElementById('intro')) return;   // overlay already gone
+        if (entered) return;   // blast fired while snapshot was in-flight — skip
+        div.style.left = x + 'px';
+        div.style.top  = y + 'px';
+        div.style.opacity = '0';
+        div.style.visibility = 'hidden';
+        runPixelMaterialize({
+          id: fxId, src, left: x, top: y, cw: w, ch: h, parent: overlay,
+          duration: MATERIALIZE_DURATION,
+          targetOpacity: 0.08,
+          onDone: () => {
+            div.style.visibility = '';
+            div.style.opacity = '0.08';                  // snaps instantly — no transition armed yet
+            // Arm the eviction fade only on the next frame, so it doesn't
+            // animate this reveal (browser batches same-recalc style changes).
+            requestAnimationFrame(() => { div.style.transition = 'opacity 1.2s ease'; });
+          }
+        });
+      })
+      .catch(() => {
+        // Fallback: plain CSS fade if html2canvas fails
+        div.style.left = x + 'px';
+        div.style.top  = y + 'px';
+        div.style.opacity = '0';
+        div.style.transition = 'opacity 1.2s ease';
+        requestAnimationFrame(() => requestAnimationFrame(() => { div.style.opacity = '0.08'; }));
+      });
+  }
+  spawnBgFragment();
+  bgTimer = setInterval(spawnBgFragment, 1500);
+
+  // After 7 s: title appears, then credit +3 s, then "click to enter" +3 s more.
+  let titleRect;
+  let title;
+  setTimeout(() => {
+    title = document.createElement('div');
+    title.className = 'intro-item intro-title';
+    title.textContent = 'Hyperlinks';
+    title.innerHTML = [...title.textContent].map(ch =>
+      ch === ' ' ? ch : `<span class="word">${ch}</span>`
+    ).join('');
+    titleRect = placeItem(title);
+  }, 7000);
+
+  setTimeout(() => {
+    const credit = document.createElement('div');
+    credit.className = 'intro-item intro-credit';
+    credit.textContent = 'A project by Keyan Thanner';
+    wrapWords(credit);
+    placeItem(credit);
+  }, 10000);
+
+  setTimeout(() => {
+    title.classList.add('as-link');
+    const enter = document.createElement('div');
+    enter.className = 'intro-item intro-enter';
+    enter.textContent = 'click to enter';
+    const x = Math.min(titleRect.x, window.innerWidth - 160 - PAD);
+    const y = Math.min(titleRect.y + titleRect.h + 16, window.innerHeight - 40 - PAD);
+    placeItem(enter, { x, y });
+    // Title hover and click both activate once "click to enter" has appeared.
+    titleHoverReady = true;
+    cacheIntroWords();
+    title.addEventListener('click', enterSite, { once: true });
+  }, 13000);
+
+  // Only the title is clickable — clicking it enters the site.
+  let entered = false;
+  function enterSite() {
+    if (entered) return;
+    entered = true;
+    clearInterval(bgTimer);
+
+    // A soft blur on the screen's borders, so content blurs as it rushes off
+    // the edges. Strong at the rim, clear in the centre.
+    const vignette = document.createElement('div');
+    vignette.className = 'intro-vignette';
+    document.body.appendChild(vignette);
+
+    // Blast: every visible element rushes toward the viewer through Z-space
+    // (perspective: 1200px), scattering and scaling up. As each element
+    // accelerates toward max size it also fades out, so the text has fully
+    // dissolved by the time it peaks. The opacity uses the same back-loaded
+    // ease as the travel, so it stays legible through the blast and only
+    // vanishes in the final stretch — gone exactly at max size.
+    const blastEase = 'cubic-bezier(.55,.02,.86,.10)';
+    const DUR = 2400;                 // ms of travel — long enough to feel immersive
+    function blast(el, { txMax, tzBase, tzVar, delay }) {
+      const tx = (Math.random() - 0.5) * txMax;
+      const ty = (Math.random() - 0.5) * txMax;
+      const tz = tzBase + Math.random() * tzVar;   // stays below the 1200px camera plane
+      el.style.transition = `transform ${DUR}ms ${blastEase} ${delay}ms, opacity ${DUR}ms ${blastEase} ${delay}ms`;
+      requestAnimationFrame(() => {
+        el.style.transform = `translate(${tx}px,${ty}px) translateZ(${tz}px)`;
+        el.style.opacity = '0';        // fully gone exactly as it reaches max size
+      });
+    }
+
+    // Everything — fragments, title, subtitle, prompt — grows the same:
+    // identical Z travel and timing, so the title scales up just as fast/big.
+    const blastParams = { txMax: 360, tzBase: 760, tzVar: 360 };
+    bgFragQueue.forEach(el => {
+      const delay = Math.random() * 200;
+      blast(el, { ...blastParams, delay });
+      // The text on the fragment also blasts a bit: each word drifts forward
+      // in the fragment's local 3D space, so the words pull apart in depth.
+      el.querySelectorAll('.bg-word').forEach(w => {
+        const wx = (Math.random() - 0.5) * 40;
+        const wy = (Math.random() - 0.5) * 40;
+        const wz = Math.random() * 160;
+        w.style.transition = `transform ${DUR}ms ${blastEase} ${delay}ms`;
+        requestAnimationFrame(() => {
+          w.style.transform = `translate3d(${wx}px,${wy}px,${wz}px)`;
+        });
+      });
+    });
+
+    [...overlay.querySelectorAll('.intro-item')].forEach(el =>
+      blast(el, { ...blastParams, delay: Math.random() * 200 }));
+
+    placed = placed.filter(r => r.id !== '__intro__');
+
+    // The white screen stays solid (content flying on top of it) for the whole
+    // blast; only once everything is off-screen does the white layer fade to
+    // reveal the canvas. The content layer never fades — it's already gone.
+    setTimeout(() => {
+      placeFragment(START_ID);           // ready the entry fragment behind the white
+      whiteBg.classList.add('leaving');  // only the white fades, revealing the canvas
+      setTimeout(() => { overlay.remove(); whiteBg.remove(); vignette.remove(); }, 800);
+    }, DUR + 3000);
+  }
+}
+
+runIntro();
 </script>
 </body>
 </html>
