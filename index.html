@@ -234,7 +234,8 @@ a.peek-res:focus:not(:focus-visible),
 #doc-link:focus:not(:focus-visible),
 #legal-link:focus:not(:focus-visible),
 #fx-toggle:focus:not(:focus-visible),
-#hyperlinks-title:focus:not(:focus-visible) {
+#hyperlinks-title:focus:not(:focus-visible),
+.intro-title:focus {
   outline: none;
 }
 
@@ -434,8 +435,9 @@ footer {
   background-size: 0% 3px;
   transition: opacity 0.6s ease, background-size 0.3s ease-in-out, color 0.6s ease;
 }
-/* Hover the title like a link: blue + the underline sweeps in from the left. */
-.intro-title:hover {
+/* Hover and keyboard focus the title like a link: blue + the underline sweeps in from the left. */
+.intro-title:hover,
+.intro-title:focus-visible {
   color: #0000EE;
   background-position: 0 100%;
   background-size: 100% 3px;
@@ -2595,38 +2597,44 @@ function runIntro() {
     const y = PAD + Math.random() * Math.max(0, window.innerHeight - h - 2 * PAD);
     bgFragQueue.push(div);
 
+    const runFallback = () => {
+      if (entered) return;                   // blast fired during snapshot — skip
+      // Fallback: plain CSS fade if html2canvas fails
+      div.style.left = x + 'px';
+      div.style.top  = y + 'px';
+      div.style.opacity = '0';
+      div.style.transition = 'opacity 1.2s ease';
+      requestAnimationFrame(() => requestAnimationFrame(() => { div.style.opacity = '0.08'; }));
+    };
+
     const fxId = '__bgfrag_' + (introSeq++);
-    html2canvas(div, { backgroundColor: null, scale: 2, logging: false })
-      .then(src => {
-        if (!document.getElementById('intro')) return;   // overlay already gone
-        if (entered) return;   // blast fired while snapshot was in-flight — skip
-        div.style.left = x + 'px';
-        div.style.top  = y + 'px';
-        div.style.opacity = '0';
-        div.style.visibility = 'hidden';
-        runPixelMaterialize({
-          id: fxId, src, left: x, top: y, cw: w, ch: h, parent: overlay,
-          duration: MATERIALIZE_DURATION,
-          targetOpacity: 0.08,
-          onDone: () => {
-            if (entered) return;                         // blast fired — leave it gone
-            div.style.visibility = '';
-            div.style.opacity = '0.08';                  // snaps instantly — no transition armed yet
-            // Arm the eviction fade only on the next frame, so it doesn't
-            // animate this reveal (browser batches same-recalc style changes).
-            requestAnimationFrame(() => { div.style.transition = 'opacity 1.2s ease'; });
-          }
-        });
-      })
-      .catch(() => {
-        if (entered) return;                   // blast fired during snapshot — skip
-        // Fallback: plain CSS fade if html2canvas fails
-        div.style.left = x + 'px';
-        div.style.top  = y + 'px';
-        div.style.opacity = '0';
-        div.style.transition = 'opacity 1.2s ease';
-        requestAnimationFrame(() => requestAnimationFrame(() => { div.style.opacity = '0.08'; }));
-      });
+    if (typeof html2canvas !== 'function') {
+      runFallback();
+    } else {
+      html2canvas(div, { backgroundColor: null, scale: 2, logging: false })
+        .then(src => {
+          if (!document.getElementById('intro')) return;   // overlay already gone
+          if (entered) return;   // blast fired while snapshot was in-flight — skip
+          div.style.left = x + 'px';
+          div.style.top  = y + 'px';
+          div.style.opacity = '0';
+          div.style.visibility = 'hidden';
+          runPixelMaterialize({
+            id: fxId, src, left: x, top: y, cw: w, ch: h, parent: overlay,
+            duration: MATERIALIZE_DURATION,
+            targetOpacity: 0.08,
+            onDone: () => {
+              if (entered) return;                         // blast fired — leave it gone
+              div.style.visibility = '';
+              div.style.opacity = '0.08';                  // snaps instantly — no transition armed yet
+              // Arm the eviction fade only on the next frame, so it doesn't
+              // animate this reveal (browser batches same-recalc style changes).
+              requestAnimationFrame(() => { div.style.transition = 'opacity 1.2s ease'; });
+            }
+          });
+        })
+        .catch(runFallback);
+    }
   }
   spawnBgFragment();
   bgTimer = setInterval(spawnBgFragment, 1500);
