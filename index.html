@@ -1,14 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Adobe Fonts kit: narkiss-asaf-variable (body font). External host —
-     if blocked/offline, the body falls back to self-hosted Verily Serif Mono. -->
-<link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css">
-<!-- html2canvas powers the dissolve snapshots.
-     If the CDN is unreachable (offline / file://), everything still works:
-     dissolves fall back to a plain CSS opacity fade. -->
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<title>Hyperlinks — A project by Keyan Thanner</title>
+<meta name="description" content="An interactive web essay exploring the history, structure, and future of hyperlinks.">
+<meta name="theme-color" content="#ffffff">
+<!-- Preconnect to external origins so the TLS handshake starts early. -->
+<link rel="preconnect" href="https://use.typekit.net" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!-- Adobe Fonts kit: narkiss-asaf-variable (body font). Loaded async so it
+     doesn't block first paint; the body falls back to self-hosted Verily Serif
+     Mono until the kit arrives (font-display: swap in the kit handles FOUT). -->
+<link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css"></noscript>
+<!-- html2canvas powers the dissolve snapshots. Loaded async so it doesn't
+     block parsing. If the CDN is unreachable or the script hasn't arrived yet,
+     dissolves fall back to a plain CSS opacity fade (checked everywhere via
+     typeof html2canvas !== 'function'). -->
+<script async src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 /* Self-hosted fonts (fonts/) — they load offline and in browsers that
    block external font hosts.
@@ -62,6 +72,8 @@ body.modal-open #canvas { filter: blur(4px); }
   position: absolute;
   opacity: 0;
   transition: opacity 0.6s ease;
+  contain: layout style;
+  will-change: transform, opacity;
 }
 
 .fragment.shown { opacity: 1; }
@@ -116,6 +128,7 @@ img.media,
 video.media {
   height: 220px;
   object-fit: contain;
+  aspect-ratio: auto;
 }
 
 iframe.media {
@@ -140,17 +153,22 @@ iframe.media {
 .note + .note { margin-top: 6px; }
 
 /* Each word is wrapped in a span so it can be restyled individually
-   by the hover material-shift effect */
+   by the hover material-shift effect. inline-block at ALL times (not just
+   while shifted): switching display only on hover changes the line-breaking
+   model mid-effect, which re-wraps a line and reflows the paragraph (the
+   "text re-lays-out on hover" bug). Staying inline-block keeps the box model
+   identical whether or not a word is shifted, so locking the width on hover
+   produces no wrap. Base layout is unchanged vs. inline; selection still
+   renders as a continuous band. */
 .word {
-  display: inline;   /* inline so native text selection is one flush band */
+  display: inline-block;
 }
 
 /* Hover material shift: words near the cursor swap from the body font
-   to Overpass Mono. The font-size is set per word (inline) so the mono
-   face fits the word's locked width (no reflow, no overflow).
+   to Overpass Mono. The font-size is set per word so the mono face fits
+   the word's locked width (no reflow, no overflow).
    Color unchanged so links stay distinct. */
 .word.mat {
-  display: inline-block;   /* only while shifted, so the locked width applies */
   font-family: "Overpass Mono", monospace;
   white-space: nowrap;   /* never break a hyphenated word inside its locked width */
 }
@@ -330,7 +348,7 @@ footer {
   inset: 0;
   z-index: 9000;
   background: transparent;   /* the white is a separate layer (.intro-white) so content never fades with it */
-  cursor: pointer;
+  cursor: default;
   perspective: 1200px;
   perspective-origin: 50% 45%;
 }
@@ -377,7 +395,7 @@ footer {
   font-size: clamp(40px, 7vw, 88px);
   line-height: 1.2;
   white-space: nowrap;
-  cursor: pointer;
+  cursor: default;
   /* Same animated underline sweep as a fragment link (a.link). */
   background-image: linear-gradient(currentColor, currentColor);
   background-repeat: no-repeat;
@@ -391,8 +409,8 @@ footer {
   background-position: 0 100%;
   background-size: 100% 3px;
 }
-/* Resting link-blue, applied once "click to enter" appears. */
-.intro-title.as-link { color: #0000EE; }
+/* Resting link-blue + pointer cursor, applied once "click to enter" appears. */
+.intro-title.as-link { color: #0000EE; cursor: pointer; }
 
 .intro-credit {
   font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
@@ -718,71 +736,250 @@ footer {
    notes[] entries are HTML strings and may contain .link anchors.
    ============================================================ */
 const FRAGMENTS = {
-  // Entry point. The whole content is the user's essay, imported from the
-  // Obsidian vault (verbatim — typos preserved). [[wiki-links]] become canvas
-  // links; targets without a fragment yet 404 gracefully (see the click handler).
-  'tim-berners-lees-proposal': {
+  'adaptation-to-the-algorithm': {
     type: 'text',
-    html: `<p>In his 1989 proposal 'Information Management: A Proposal,' written during his work at CERN, Tim Berners-Lee developed the idea that would later become the World-Wide Web, or 'Web' for short. He describes his proposal as follows: "Firstly, it discusses the problem of information access at CERN. Then, it introduces the idea of linked information systems and compares them with less flexible ways of finding information."</p>
-<p>At the center of the proposal, and thus the Web, has always been hypertext, which made it possible to connect parts of a document and create connections within it using hyperlinks. The <a class="link" data-target="history-of-the-hyperlink" data-from="tim-berners-lees-proposal">history of the hyperlink</a> contains many ideas and was shaped by many people until it finally led to the development of the Web through Tim Berners-Lee.</p>
-<p>Already visible in the proposal is the idea of <a class="link" data-target="non-hierarchical-linking" data-from="tim-berners-lees-proposal">non-hierarchical linking</a>, the principle that any document could connect to any other, with no fixed order. This is especailly interesting, because it shows how his idea wasn't just about how to share information but also how Hyperlinks can work as a way to think and research</p>`
+    html: `<p>The more social media use <a class="link" data-target="algorithm-based-feeds" data-from="adaptation-to-the-algorithm">algorithm-based feeds</a>, the more powerful algorithms become. This leads to content adapting to suit the algorithm, getting pushed, and gaining more views and money. A current example is “ragebait”<span class="peek-note" data-kind="definition">[?]<template class="peek-body">content engineered to provoke outrage or strong reactions, maximising engagement over information</template></span><a class="peek-res" href="https://news.stanford.edu/stories/2025/12/rage-bait-explained-oxford-word-year" target="_blank" rel="noopener" data-label="Stanford News. &quot;Rage Bait: Oxford's 2025 Word of the Year.&quot; Dec. 2025.">[↗]</a>, a form of clickbait that drives interaction because even negative interaction leads to more recommendations.</p>
+<p>This adaptation isn't bound to social media. Google's <a class="link" data-target="pagerank" data-from="adaptation-to-the-algorithm">PageRank</a> led to SEO (search engine optimization), as <a class="link" data-target="i-miss-how-google-used-to-work" data-from="adaptation-to-the-algorithm">I Miss How Google Used To Work</a> describes. Google also distributes ads via AdSense<span class="peek-note" data-kind="definition">[?]<template class="peek-body">Google's ad network — publishers embed it to display Google-sold ads in exchange for a revenue share</template></span>, ranking sites higher the longer people stayed. Sites became dependent on Google's rules; if you couldn't be seen via Google, you were practically unfindable on the internet.</p>
+<p>This creates creative boundaries, making it hard for creatives to reach an audience through these platforms, and is bad for <a class="link" data-target="non-hierarchical-linking" data-from="adaptation-to-the-algorithm">non-hierarchical linking</a> because the platforms are hierarchical due to their monopoly status.</p>`
   },
 
-  'the-visionaries-of-the-web': {
-    type: 'text',
-    html: `<p>The saying "We stand on shoulders of giants"<span class="peek-note" data-kind="quote">[”]<template class="peek-body">“If I have seen further it is by standing on the shoulders of Giants.” — Isaac Newton, 1675</template></span> holds very true for the web as we know it today. Without the work of many individuals in information management, the internet would look completely different from what we are used to today. The fundamental ideas of the web were primarily shaped by Vannevar Bush's <a class="link" data-target="memex" data-from="the-visionaries-of-the-web">Memex</a>; a device that represents a kind of analog personal computer with hyperlinks. Furthermore, <a class="link" data-target="douglas-engelbart" data-from="the-visionaries-of-the-web">Douglas Engelbart</a> significantly shaped the concept of the hyperlink, and he is also considered the forefather of the hyperlink. However, even before the World Wide Web, there were ideas for a similar web, most notably <a class="link" data-target="xanadu" data-from="the-visionaries-of-the-web">Xanadu</a>, which shared many things with the World Wide Web, but also envisioned some things completely differently. The invention of the web clearly demonstrates how the <a class="link" data-target="combination-of-ideas-brings-forth-new-ideas" data-from="the-visionaries-of-the-web">combination of ideas brings forth new ideas</a>.</p>`
-  },
-
-  'tim-berners-lee': {
-    type: 'text',
-    html: `<p>Tim Berners-Lee invented the World Wide Web. At his time as a programmer at CERN he built the first browser, the first server, and the language every page still uses, <a class="link" data-target="html" data-from="tim-berners-lee">HTML</a>. From the beginning, he worked on the Web not only as a programmer; he used information theories to make the ideas of <a class="link" data-target="open-data" data-from="tim-berners-lee">open data</a> and <a class="link" data-target="decentralization" data-from="tim-berners-lee">decentralization</a> the core of the Web. For this he was inspired by the work of <a class="link" data-target="the-visionaries-of-the-web" data-from="tim-berners-lee">The visionaries of the Web</a>. The core ideas of the web, a network that belongs to everyone, with no central gatekeeper, did not stay in the past: the same spirit still drives the <a class="link" data-target="fediverse" data-from="tim-berners-lee">Fediverse</a> today, built on open, shared <a class="link" data-target="protocols" data-from="tim-berners-lee">protocols</a> instead of private gates.</p>`
-  },
-
-  'html': {
-    type: 'text',
-    html: `<p>With the development of the web, <a class="link" data-target="tim-berners-lee" data-from="html">Tim Berners-Lee</a> developed a markup language that every site on the web uses, HTML (short for Hypertext Markup Language)<span class="peek-note" data-kind="definition">[?]<template class="peek-body">HTML — the standard markup language for web documents. It structures content with nested <em>elements</em>; the hyperlink is one of them.</template></span>. It is the skeleton of a web page. It defines the structure, the way a frame defines a house. It uses so called "elements" to define the website's content. As the name implies, Hyperlinks are at the core of HTML. To make a hyperlink, you simply use an <em>&lt;a href="..."&gt;</em> element<span class="peek-note" data-kind="code">[&lt;/&gt;]<template class="peek-body"><code>&lt;a href="https://example.com"&gt;link text&lt;/a&gt;</code></template></span>. It holds the address of the target. This can be a URL, but also a fragment within the same page (<em>#section</em>), an email (<em>mailto:</em>), a phone number (<em>tel:</em>), or a relative path to another file. Hyperlinks in HTML can be added not only to text, but also to images and basically any other element (buttons, whole blocks). That a hyperlink can be attached in so many ways shows how central it is to the web. At the core, Hyperlinks in HTML use <a class="link" data-target="non-hierarchical-linking" data-from="html">non-hierarchical linking</a>, so they can link to anything. Unlike <a class="link" data-target="xanadu" data-from="html">Xanadu</a>, these links work only in one direction. So the target doesn't know it's being linked to, which is also the reason for <a class="link" data-target="link-rot" data-from="html">link rot</a>.</p>`
-  },
-
-  'index': {
-    type: 'text',
-    html: `<p>Indexing makes information findable by connecting it together. This applies both to publishing, where an index points to the place of certain keywords, and to the web, where indexing makes pages findable in the first place.</p>
-<p>Search engines like Google build their index through <em>crawling</em>: automated programs follow links from page to page through the web's non-hierarchical linking, the way a reader would, and record everything they find. The result is a massive index: a searchable copy of the web. Only a page that has been crawled and indexed can be found at all.</p>
-<p>An index in a book works the same way — pointing from a keyword to the place where it can be found. It is, in a sense, a form of <a class="link" data-target="analog-linking" data-from="index">analog linking</a>: a hyperlink on paper.</p>`
-  },
-
-  'pagerank': {
-    type: 'text',
-    html: `<p>In 1996 Stanford students Larry Page<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ec/Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped%29.jpg" data-cap="Larry Page, European Parliament 2009. Stansfield PL / Wikimedia Commons, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Sergey Brin developed an Algorithmn, that would change how we move around the web and later, change the whole web. What they developed was PageRank<span class="peek-note" data-kind="definition">[?]<template class="peek-body">PageRank — Google's original ranking algorithm. It scores a page by the number and quality of other pages that link to it, treating each hyperlink as a vote.</template></span>, the Algorithmn that lead to and is used by Google. There were different Search-Engines before, like Yahoo, that used a manually <a class="link" data-target="index" data-from="pagerank">index</a> of Websites to later search for them. PageRank used an automatic approach, ranking the websites based on how often they are linked to; a method that was already invented by Eugene Garfield<a class="peek-res" href="https://doi.org/10.1126/science.122.3159.108" target="_blank" rel="noopener" data-label="Garfield, E. (1955). Citation Indexes for Science. Science, 122(3159).">[↗]</a> (called "SCI", short for "Science Citation Index") Instead of Citations, PageRank used Hyperlinks do determine how important a website is and also . And other than Yahoo, this method used <a class="link" data-target="non-hierarchical-linking" data-from="pagerank">non-hierarchical linking</a> as the basis, This worked really, really well. In fact, it worked so good,by the early 2000s, Google had become the dominant search engine. But it doesn't stop there. Google became one of the largest companies in the world. And with that power came a new pressure on the web. What followed was an <a class="link" data-target="adaptation-to-the-algorithmn" data-from="pagerank">Adaptation to the algorithmn</a>: websites restructuring themselves not for readers, but for Google's PageRank.</p>`
-  },
-
-  'adaptation-to-the-algorithmn': {
-    type: 'text',
-    html: `<p>The more social media use <a class="link" data-target="algorithmn-based-feeds" data-from="adaptation-to-the-algorithmn">algorithmn-based feeds</a> the more powerful become the algorithmns. This leads to a change in the content to suit the algorithmn better and therefore getting pushed by the algorithmn, getting more views and money. A current example is "Raigebait", a form of clickbait to gain more views and especially more interaction. Because interaction, even negative one, leads to more recommendations from the algorithmn.</p>
-<p>This adaptation isn't bound to social media, Google's algorithmn, <a class="link" data-target="pagerank" data-from="adaptation-to-the-algorithmn">PageRank</a>, lead to another way of adaption. This deveopment of the web to suit the algorithmn and getting higher ranked, also called SEO (Search Engine Optimization) <a class="link" data-target="i-miss-how-google-used-to-work" data-from="adaptation-to-the-algorithmn">I Miss How Google Used To Work</a> described. It's not just the Search Engine; Google started running ads. But not just on their own site; through their "AdSense" service, Google distributed ads on all kinds of websites. So Google began to rank websites higher if people stayed on them longer, because this meant more ads and more money for Google. Thus, sites started playing by Google's rules because they were dependent on Google's ranking system. If you couldn't be seen via Google, you were practically unfindable on the internet.</p>
-<p>This leads to creative boundaries, making it hard for many creatives to reach an audience trought these plattforms and bad in <a class="link" data-target="non-hierarchical-linking" data-from="adaptation-to-the-algorithmn">non-hierarchical linking</a> because the plattforms are hierarchical caused by their monopoly status.</p>`
-  },
-
-  'algorithmn-based-feeds': {
+  'algorithm-based-feeds': {
     type: 'text',
     html: `<p>The biggest problem with current social media platforms is their monetization. This relies on collecting personal data and displaying personalized advertising. Accordingly, platforms earn more money the longer you spend on them. To achieve this, algorithms are used whose sole purpose is to attract the most attention. The consequences of these algorithms are not just extreme content; the algorithms also work so well that, with TikTok, there are now platforms where you spend the vast majority of your time automatically watching content recommended by the algorithm.</p>
-<p>Especially the shift away from choosing your own content, for example by subscribing to YouTube channels, towards algorithmn based feeds, is important. It is getting less about human<a class="link" data-target="recommendations" data-from="algorithmn-based-feeds">recommendations</a>. How is this development towards <a class="link" data-target="dehumanization" data-from="algorithmn-based-feeds">dehumanization</a> changing the web? And can <a class="link" data-target="decentralized-social-media" data-from="algorithmn-based-feeds">decentralized social media</a> change it to the better?</p>
-<p>But it is not only that. The algorithm-based feed makes the algorithmns more powerful. Like with Google, the content on social media changes to be recommended more. Not by people, but by the algorithmn. This is what I call the <a class="link" data-target="adaptation-to-the-algorithmn" data-from="algorithmn-based-feeds">Adaptation to the algorithmn</a>.</p>`
+<p>Especially the shift away from choosing your own content — for example, by subscribing to YouTube channels — toward algorithm-based feeds is important. It is becoming less about human recommendations. How is this development toward <a class="link" data-target="dehumanization" data-from="algorithm-based-feeds">dehumanization</a> changing the web? And can <a class="link" data-target="decentralized-social-media" data-from="algorithm-based-feeds">decentralized social media</a> change it for the better?</p>
+<p>But it is not only that. The algorithm-based feed makes the algorithms more powerful. As with Google, the content on social media changes to be recommended more — not by people, but by the algorithm. This is what I call the <a class="link" data-target="adaptation-to-the-algorithm" data-from="algorithm-based-feeds">Adaptation to the algorithm</a>.</p>`
+  },
+
+  'bluesky': {
+    type: 'text',
+    html: `<p>Bluesky is a social network that uses the AT Protocol, a type of open <a class="link" data-target="protocols" data-from="bluesky">protocols</a>. It was founded by then-CEO of Twitter, Jack Dorsey<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Jack_Dorsey_in_Washington_D.C._-_2018_%2844538272181%29_%28cropped%29.jpg/960px-Jack_Dorsey_in_Washington_D.C._-_2018_%2844538272181%29_%28cropped%29.jpg" data-cap="Jack Dorsey, who initiated Bluesky, 2018. Mark Warner / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, as a kind of decentralized Twitter.</p>
+<p>It is often seen as a competitor to the <a class="link" data-target="fediverse" data-from="bluesky">Fediverse</a>, as both represent a type of decentralized social network.</p>`
+  },
+
+  'dead-internet-theory': {
+    type: 'text',
+    html: `<p>The Dead Internet theory posits that the vast majority of internet activity is generated by AI bots, not humans. The theory originated in 2021 on 4chan, where it was claimed that the internet “died” in 2016 and has since been dominated by bots. The literal claim is almost certainly false, but it points to a real and growing trend: in 2025, 53% of web traffic came from bots, 40% of which was classified as harmful<a class="peek-res" href="https://www.statista.com/chart/35950/share-of-global-web-traffic-generated-by-humans-and-bots-since-2018/" target="_blank" rel="noopener" data-label="Statista. &quot;Share of global web traffic generated by humans and bots since 2018.&quot; 2025.">[↗]</a>. With the rise of generative AI, this theory has only become more relevant.</p>
+<p>Part of the theory is also a feeling rather than a hard fact: that content online is no longer made for humans but for algorithmic recommendations. As a result, content increasingly evolves to be pushed by algorithms, generating the most views, interactions, and, consequently, advertising revenue. One example is SEO (search engine optimization), used to rank higher in search engines such as Google's <a class="link" data-target="pagerank" data-from="dead-internet-theory">PageRank</a><a class="peek-res" href="https://www.cnet.com/home/internet/what-is-the-dead-internet-theory/" target="_blank" rel="noopener" data-label="CNET. &quot;What Is the Dead Internet Theory?&quot; 2024.">[↗]</a>.</p>`
   },
 
   'decentralized-social-media': {
     type: 'text',
-    html: `<p>Decentralized social media (DSM) is social media that is <strong>not</strong> owned or controlled by a single company. Instead of one platform holding all your data, your account and your reach, DSM is built on shared, open <a class="link" data-target="protocols" data-from="decentralized-social-media">protocols</a>. Any platform that speaks the same protocol can join the network, and accounts on different platforms can communicate with each other.</p>
-<p>The same way you can use <a class="link" data-target="email" data-from="decentralized-social-media">Email</a> across different providers, you could share information on DSM across different plattforms which all share the same <a class="link" data-target="protocols" data-from="decentralized-social-media">protocols</a>. It does not matter whether your address is at one provider or another — they all interoperate.</p>
-<p>This is the opposite of today's mainstream social media, where you can usually only reach other accounts on the <em>same</em> platform. The underlying idea that makes this possible — <a class="link" data-target="decentralization" data-from="decentralized-social-media">Decentralization</a> — is described in its own text. The infrastructure that puts it into practice for social media is the <a class="link" data-target="fediverse" data-from="decentralized-social-media">Fediverse</a>.</p>`
+    html: `<p>Decentralized social media (DSM) is social media that is <strong>not</strong> owned or controlled by a single company. Instead of one platform holding all your data, your account, and your reach, DSM is built on shared, open <a class="link" data-target="protocols" data-from="decentralized-social-media">protocols</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">shared technical rules that let different software systems communicate — like HTTP for the web or SMTP for email</template></span>. Any platform that speaks the same protocol can join the network, and accounts on different platforms can communicate with each other.</p>
+<p>The same way you can use email across different providers, you can share information on DSM across different platforms that all share the same protocols. It does not matter whether your address is at one provider or another; they all interoperate.</p>
+<p>This is the opposite of today's mainstream social media, where you can usually only reach other accounts on the same platform. The underlying idea that makes this possible, <a class="link" data-target="decentralization" data-from="decentralized-social-media">decentralization</a>, is described in its own text. The infrastructure that puts it into practice for social media is the <a class="link" data-target="fediverse" data-from="decentralized-social-media">Fediverse</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">the network of independent social servers sharing the ActivityPub protocol, enabling cross-platform interaction</template></span>.</p>`
+  },
+
+  'dehumanization': {
+    type: 'text',
+    html: `<p>With the rise of social media, the web got dehumanized. Sounds paradoxical, right? How can platforms built around being social end up controlled by algorithms and bots?</p>
+<p>The layer between you and content used to be a person: your feed showed people you followed and you found things because someone shared a link. Now an algorithm chooses instead, creating <a class="link" data-target="algorithm-based-feeds" data-from="dehumanization">algorithm-based feeds</a> optimized for attention, not for what someone liked. But sharing content online isn't dead; it's just not the default anymore.</p>
+<p>It goes further: in 2025, 53% of traffic online comes from bots, not people<a class="peek-res" href="https://www.statista.com/chart/35950/share-of-global-web-traffic-generated-by-humans-and-bots-since-2018/" target="_blank" rel="noopener" data-label="Statista. &quot;Share of global web traffic generated by humans and bots since 2018.&quot; 2025.">[↗]</a>. And even further, AI makes it easy to produce content with no human author, flooding the web with “AI slop.” Taken to the extreme, this is <a class="link" data-target="dead-internet-theory" data-from="dehumanization">“dead internet theory”</a>: much of the web is bots reacting to content, with barely any humans involved.</p>`
+  },
+
+  'fediverse': {
+    type: 'text',
+    html: `<p>The Fediverse is an infrastructure for social media platforms based on <a class="link" data-target="decentralization" data-from="fediverse">decentralization</a>. Its goal is to create connections and share information across different platforms. The most important one right now is called Mastodon<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Mastodon_Mascot_%28Greeting%29.png/960px-Mastodon_Mascot_%28Greeting%29.png" data-cap="Mastodon's mascot. dopatwo / Wikimedia, AGPL">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, which gained popularity after Elon Musk bought Twitter in 2022<a class="peek-res" href="https://blog.joinmastodon.org/2022/04/twitter-buyout-puts-mastodon-into-spotlight/" target="_blank" rel="noopener" data-label="Mastodon Blog. &quot;Twitter's new owner puts Mastodon in the spotlight.&quot; Apr. 2022.">[↗]</a>.</p>
+<p>There are many reasons for the Fediverse and <a class="link" data-target="why-we-need-decentralized-social-media" data-from="fediverse">why we need decentralized social media</a>, especially the shift of power from platforms to users. Right now, the <a class="link" data-target="network-effect" data-from="fediverse">network-effect</a> locks people into social media platforms criticized for their <a class="link" data-target="algorithm-based-feeds" data-from="fediverse">algorithm-based feeds</a> and monetization. At the same time, there are good reasons <a class="link" data-target="why-the-network-effect-can-favor-the-fediverse" data-from="fediverse">Why the network effect can favor the Fediverse</a>, especially the shared users across platforms.</p>`
+  },
+
+  'filter-bubbles': {
+    type: 'text',
+    html: `<p>Filter bubbles describe the theory that algorithmic recommendations on social networks lead to a one-sided, confirming flow of information.</p>
+<p>In <a class="link" data-target="the-web-we-have-to-save" data-from="filter-bubbles">The Web We Have to Save</a>, Hossein Derakhshan critiques social media algorithms. Users no longer check dedicated web pages directly; instead, they are “fed by a never-ending flow of information that's picked for them by complex — and secretive — algorithms.” But there are also voices against the idea of filter bubbles caused by social media algorithms. Peter M. Dahlgren says that the societal effects aren't as big as we think due to the interactions of various social groups outside the digital world. Also, studies show that the bigger problem is confirmation bias.<a class="peek-res" href="https://www.bpb.de/themen/medien-journalismus/soziale-medien/545800/mythos-filterblase-sind-wir-wirklich-so-isoliert/#footnote-target-6" target="_blank" rel="noopener" data-label="Dahlgren, Peter M. &quot;Mythos Filterblase.&quot; Bundeszentrale für politische Bildung, 2023.">[↗]</a></p>
+<p>I think we get what we make of our <a class="link" data-target="tools" data-from="filter-bubbles">tools</a>. Even though algorithms can sometimes be viewed critically, they offer benefits. The social network <a class="link" data-target="bluesky" data-from="filter-bubbles">Bluesky</a>, for example, makes it possible to customize the algorithm yourself to gain more control over your own consumption.</p>`
+  },
+
+  'html': {
+    type: 'text',
+    html: `<p>With the development of the web, <a class="link" data-target="tim-berners-lee" data-from="html">Tim Berners-Lee</a> developed a markup language that every site on the web uses, HTML (short for Hypertext Markup Language). It is the skeleton of a web page. It defines the structure, the way a frame defines a house. It uses so-called “elements” to define the website's content. As the name implies, hyperlinks are at the core of HTML. To make a hyperlink, you simply use an <em>&lt;a href="..."&gt;</em> element. It holds the address of the target. This can be a URL, a fragment within the same page (<em>#section</em>), an email (<em>mailto:</em>), a phone number (<em>tel:</em>), or a relative path to another file. Hyperlinks in HTML can be added not only to text but also to images and basically any other element (buttons, whole blocks)<a class="peek-res" href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank" rel="noopener" data-label="MDN Web Docs. &quot;HTML: HyperText Markup Language.&quot;">[↗]</a>. The fact that a hyperlink can be attached in so many ways shows how central it is to the web. At the core, hyperlinks in HTML use <a class="link" data-target="non-hierarchical-linking" data-from="html">non-hierarchical linking</a>, so they can link to anything without any hierarchy. Unlike <a class="link" data-target="xanadu" data-from="html">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span>, these links work only in one direction, so the target doesn't know it's being linked to, which is also the reason for <a class="link" data-target="link-rot" data-from="html">link rot</a>.</p>`
+  },
+
+  'hypercard': {
+    type: 'text',
+    html: `<p>HyperCard is software developed by Bill Atkinson<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Bill_Atkinson_at_25_years_of_HyperCard_event_%28cropped%29.jpeg/960px-Bill_Atkinson_at_25_years_of_HyperCard_event_%28cropped%29.jpeg" data-cap="Bill Atkinson at a 25 Years of HyperCard event, 2012. Jay Cross / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 1987 for Apple<a class="peek-res" href="https://en.wikipedia.org/wiki/HyperCard" target="_blank" rel="noopener" data-label="Wikipedia. &quot;HyperCard.&quot; Wikimedia Foundation.">[↗]</a>. Its main function was to connect different documents and media to one another, creating paths. This can be seen as a digital version of the <a class="link" data-target="memex" data-from="hypercard">Memex</a>, whose idea was developed in 1939 by Vannevar Bush.</p>
+<p>In <a class="link" data-target="hypercard-changed-everything" data-from="hypercard">HyperCard Changed Everything</a>, the history and impact of HyperCard are explored.</p>
+<p>With the HyperCard simulator<a class="peek-res" href="https://hcsimulator.com/" target="_blank" rel="noopener" data-label="HyperCard Simulator. hcsimulator.com.">[↗]</a>, you can simulate HyperCard on your own desktop.</p>`
+  },
+
+  'index': {
+    type: 'text',
+    html: `<p>Indexing makes information findable by connecting it. This applies both to publishing, where an index points to the place of certain keywords, and to the web, where indexing makes pages findable in the first place.</p>
+<p>Search engines like Google build their indexes through crawling<span class="peek-note" data-kind="definition">[?]<template class="peek-body">automated bots follow links across the web, reading and recording pages to build a searchable index</template></span>: automated programs follow links from page to page through the web's nonhierarchical linking the way a reader would and record everything they find. The result is a massive index: a searchable copy of the web. Only a page that has been crawled and indexed can be found at all.</p>
+<p>An index in a book works the same way, pointing from a keyword to the place where it can be found. It is, in a sense, a form of <a class="link" data-target="analog-linking" data-from="index">analog linking</a>: a hyperlink on paper.</p>`
+  },
+
+  'javascript': {
+    type: 'text',
+    html: `<p>JavaScript was developed by Brendan Eich<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Brendan_Eich_Mozilla_Foundation_official_photo.jpg/960px-Brendan_Eich_Mozilla_Foundation_official_photo.jpg" data-cap="Brendan Eich, creator of JavaScript. Darcy Padilla / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 1995. Its goal was to enrich functionality beyond HTML. JavaScript was inspired by HyperTalk, the scripting language used for <a class="link" data-target="hypercard" data-from="javascript">HyperCard</a>, a program by Apple that used hyperlinks. The initial use cases for JavaScript were entering information into forms and performing actions like playing audio files<a class="peek-res" href="https://cybercultural.com/p/1995-the-birth-of-javascript/" target="_blank" rel="noopener" data-label="CyberCultural. &quot;1995: The Birth of JavaScript.&quot;">[↗]</a>. With that, it created new clickable actions, not just moving beyond hyperlinks but expanding the concept of hyperlinks through the creation of more versatile buttons.</p>`
+  },
+
+  'knowledge-linking': {
+    type: 'text',
+    html: `<p>Knowledge linking is the practice of connecting ideas across notes, documents, and sources so that meaning emerges not from single entries but from their relationships. Long before the web, Vannevar Bush imagined the <a class="link" data-target="memex" data-from="knowledge-linking">Memex</a>, a machine that would let users trail through information the way the human mind associates thoughts. Today, tools like an <a class="link" data-target="index" data-from="knowledge-linking">index</a> serve a similar purpose: a map of where ideas live and how they connect. Collaborative platforms such as <a class="link" data-target="wikipedia" data-from="knowledge-linking">Wikipedia</a> show this at scale, where every article gains depth through its links to related concepts. In a personal knowledge system, linking transforms isolated notes into a living network. The more intentionally you link, the more your knowledge base begins to think alongside you.</p>`
+  },
+
+  'link-rot': {
+    type: 'text',
+    html: `<p>When a website links to another, that connection is permanent and stays fixed until someone changes it in the <a class="link" data-target="html" data-from="link-rot">HTML</a> document itself.</p>
+<p>This permanence is exactly what causes “link rot”: a hyperlink stops working once its target moves, changes, or is deleted, while the link itself remains unchanged, now pointing at nothing. This is especially damaging for academia, since scholarship is built on citations that are expected to remain verifiable. To counter this problem, people have started <a class="link" data-target="preserving-the-web" data-from="link-rot">Preserving the web</a> to maintain access to websites that are deleted.</p>`
+  },
+
+  'memex': {
+    type: 'text',
+    html: `<p>In 1939, long before personal computers or the web existed, Vannevar Bush<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ea/Vannevar_Bush_portrait.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> imagined a device he called the Memex. Conceived as a kind of analogue personal computer, it would allow users to store documents, build a personal <a class="link" data-target="index" data-from="memex">index</a>, navigate between them, and create trails linking one part of a document to another. These associative paths mimicked the way the human mind works, jumping freely between related ideas. What made Bush's vision especially fascinating was his idea of a new profession: the trailblazer, someone whose job would be to craft and curate meaningful links between documents. The concept anticipated hypertext by decades. Like Ted Nelson's <a class="link" data-target="xanadu" data-from="memex">Xanadu</a>, the Memex resembles the web we know today, yet both visions imagined something richer and more intentional. Bush had the idea for the <a class="link" data-target="tools" data-from="memex">tools</a>. The technology simply wasn't there yet.</p>`
+  },
+
+  'network-effect': {
+    type: 'text',
+    html: `<p>The network effect describes a phenomenon in which a technology becomes more valuable as more people use it. The telephone<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Candlestick_phone.JPG/960px-Candlestick_phone.JPG" data-cap="An early candlestick telephone. Nuberger13 / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> is the classic example: each new user makes the network more valuable for everyone already on it. Social media works the same way: more users mean more connections and content, creating a self-reinforcing loop: more users → more value → even more users.</p>
+<p>This is also why social media tends toward monopoly: once a platform reaches critical mass, leaving means losing your entire social graph, making competitors nearly impossible to displace.</p>
+<p>Decentralized platforms like the <a class="link" data-target="fediverse" data-from="network-effect">Fediverse</a> apply this differently. Instead of locking users into one platform, they share users and content across interconnected platforms via open protocols, letting the network effect benefit the whole ecosystem. This gives decentralized platforms a structural advantage, explored in <a class="link" data-target="why-the-network-effect-can-favor-the-fediverse" data-from="network-effect">Why the network effect can favor the Fediverse</a>.</p>`
+  },
+
+  'non-hierarchical-linking': {
+    type: 'text',
+    html: `<p>Non-hierarchical linking is at the very core of the internet. In <a class="link" data-target="tim-berners-lees-proposal" data-from="non-hierarchical-linking">Tim Berners-Lee's Proposal</a>, he deliberately moved away from the rigid, tree-like structure of a file system, where every document must belong to exactly one folder and one parent category. Instead, he chose a linking model where any document can connect to any other, freely and in multiple directions. This made the web both easy to build and far more flexible: a topic no longer has to live in a single place; it can be reached from countless angles.</p>
+<p>The clearest expression of this idea is <a class="link" data-target="wikipedia" data-from="non-hierarchical-linking">Wikipedia</a>. A defining characteristic of its articles is the dense web of connections between them. Every page links outward to dozens of related concepts, and is in turn linked to by many others. The same principle shaped how the <a class="link" data-target="tools" data-from="non-hierarchical-linking">tools</a> of the web were built and how we navigate it today.</p>
+<p>What is often overlooked, however, is that Berners-Lee was not the first to imagine this kind of interconnected document space. Like many of the web's foundational ideas, non-hierarchical linking was already envisioned by <a class="link" data-target="the-visionaries-of-the-web" data-from="non-hierarchical-linking">The visionaries of the Web</a>, who laid the intellectual groundwork long before the web existed.</p>`
+  },
+
+  'open-data': {
+    type: 'text',
+    html: `<p>Open data is data that anyone can freely access, use, and share, without restrictions from copyright, patents, or control.<a class="peek-res" href="https://opendatahandbook.org/guide/en/what-is-open-data/" target="_blank" rel="noopener" data-label="Open Data Handbook. &quot;What Is Open Data?&quot; Open Knowledge Foundation.">[↗]</a> When <a class="link" data-target="tim-berners-lee" data-from="open-data">Tim Berners-Lee</a> designed the Web, open data was at the core. As early as <a class="link" data-target="tim-berners-lees-proposal" data-from="open-data">Tim Berners-Lee's Proposal</a> in 1989, the core principle was that information should flow freely. When he released the Web in 1993 without patents or fees, that became real — the <a class="link" data-target="web-as-a-common" data-from="open-data">Web as a Common</a>, belonging to no single company or government.</p>
+<p>Closed data creates gatekeepers: whoever controls access controls who can read, build on, or challenge information. Open data removes that gatekeeper. It is what allows researchers, journalists, and developers to work across sources, and it is what makes <a class="link" data-target="knowledge-linking" data-from="open-data">knowledge-linking</a> possible. You can only link to knowledge that is openly reachable.</p>`
+  },
+
+  'pagerank': {
+    type: 'text',
+    html: `<p>In 1996, Stanford students Larry Page<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ec/Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped%29.jpg" data-cap="Larry Page, European Parliament 2009. Stansfield PL / Wikimedia Commons, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Sergey Brin<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/3/38/Sergey_Brin.JPG" data-cap="Sergey Brin, 2005. Allen Lew / Wikimedia, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed an algorithm that would change how we navigate the web and, later, change the web entirely. What they developed was PageRank<span class="peek-note" data-kind="definition">[?]<template class="peek-body">Google's original ranking algorithm — it scores a page by the number and quality of other pages linking to it, treating each link as a vote.</template></span>, the algorithm that led to and is used by Google. There were different search engines before, like Yahoo, that used a manually maintained <a class="link" data-target="index" data-from="pagerank">index</a> of websites to search later.<a class="peek-res" href="https://thedigitalmaze.com/blog/the-story-of-search-engines-the-past-the-present-and-the-future/" target="_blank" rel="noopener" data-label="The Digital Maze. &quot;The Story of Search Engines: The Past, the Present, and the Future.&quot;">[↗]</a> PageRank used an automatic approach, ranking websites based on how often they are linked to — a method already invented by Eugene Garfield<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF/lossy-page1-500px-Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF.jpg" data-cap="Eugene Garfield, pioneer of citation indexing, 2007. Chemical Heritage Foundation / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> (called “SCI,” short for “Science Citation <a class="link" data-target="index" data-from="pagerank">index</a>”).<a class="peek-res" href="https://www.youtube.com/watch?v=72nfrhXroo8" target="_blank" rel="noopener" data-label="Wright, Alex. &quot;The Web That Wasn't.&quot; Google Tech Talk, YouTube.">[↗]</a> Instead of citations, PageRank used hyperlinks to determine how important a website is. And unlike Yahoo, this method used <a class="link" data-target="non-hierarchical-linking" data-from="pagerank">non-hierarchical linking</a> as the basis. This worked really, really well. In fact, it worked so well that, by the early 2000s, Google had become the dominant search engine. But it didn't stop there. Google became one of the largest companies in the world. And with that power came new pressure on the web. What followed was an <a class="link" data-target="adaptation-to-the-algorithm" data-from="pagerank">Adaptation to the algorithm</a>: websites restructuring themselves not for readers, but for Google's PageRank.</p>`
+  },
+
+  'preserving-the-web': {
+    type: 'text',
+    html: `<p>The bigger the web got, the more important it became to preserve it so that information on the web can be found not only 5 or 10 but 500 years from now. One problem is <a class="link" data-target="link-rot" data-from="preserving-the-web">Link rot</a>: pages disappear, URLs change, and links point to nothing. But the deeper question is whether the web's content can survive at all over long stretches of time. The Internet Archive is the most popular archive of the internet. The Wayback Machine is one of the few <a class="link" data-target="tools" data-from="preserving-the-web">tools</a> that let you travel back in time on websites and see how they looked in the past. But even stored data is fragile. Old file formats and discontinued software can make content unreadable, regardless of how carefully it was saved. <a class="link" data-target="decentralization" data-from="preserving-the-web">Decentralization</a> offers a resilient path for preserving the web: many independent copies instead of one central archive. But preservation is a social question as much as a technical one. Treating the web as a <a class="link" data-target="web-as-a-common" data-from="preserving-the-web">Web as a Common</a> means asking who takes responsibility for it and how access stays open rather than dependent on any single organization.</p>`
+  },
+
+  'protocols': {
+    type: 'text',
+    html: `<p>A protocol is a set of agreed-upon rules that govern how computers or systems communicate. Protocols are important because standardized processes reduce conflicts and inefficiencies, enable communication across systems with different hardware and software, and ensure security and reliability through built-in measures.<a class="peek-res" href="https://www.fastly.com/learning/cdn/what-is-a-protocol" target="_blank" rel="noopener" data-label="Fastly. &quot;What Is a Protocol?&quot;">[↗]</a> Open protocols are publicly documented and not controlled by any single company. An example of open protocols is email, which uses three open protocols: SMTP, POP3, and IMAP.<a class="peek-res" href="https://www.siteground.com/tutorials/email/protocols-pop3-smtp-imap/" target="_blank" rel="noopener" data-label="SiteGround. &quot;Email Protocols: POP3, SMTP, IMAP.&quot;">[↗]</a> The use of these shared protocols makes it possible to send emails to any address. Open protocols are at the core of the World Wide Web, with the W3C (World Wide Web Consortium), founded by World Wide Web creator <a class="link" data-target="tim-berners-lee" data-from="protocols">Tim Berners-Lee</a>, creating web standards for everyone to use.<a class="peek-res" href="https://www.w3.org/standards/" target="_blank" rel="noopener" data-label="W3C. &quot;Web Standards.&quot; World Wide Web Consortium.">[↗]</a></p>`
+  },
+
+  'start': {
+    type: 'text',
+    html: `<p><a class="link" data-target="tim-berners-lee" data-from="start">Tim Berners-Lee</a>, <a class="link" data-target="tim-berners-lees-proposal" data-from="start">Tim Berners-Lee's Proposal</a></p>`
+  },
+
+  'the-visionaries-of-the-web': {
+    type: 'text',
+    html: `<p>The saying “We stand on the shoulders of giants” holds especially true for the web as we know it today. Without the work of many individuals in information management, the internet would look completely different from what we know now. The web's fundamental ideas were shaped largely by Vannevar Bush<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ea/Vannevar_Bush_portrait.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>'s <a class="link" data-target="memex" data-from="the-visionaries-of-the-web">Memex</a><span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/fb/Memex_at_Das_Netz_exhibition_of_Deutsches_Technikmuseum.jpg" data-cap="Memex model, Das Netz exhibition, Deutsches Technikmuseum. Bunyk / Wikimedia, CC BY 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, a device that functioned as an analog personal computer with hyperlinks. Douglas Engelbart<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/f0/SRI_Douglas_Engelbart_2008.jpg" data-cap="Douglas Engelbart with the first computer mouse prototype, 2008. SRI International / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> further developed the concept and is widely regarded as the forefather of the hyperlink. Even before the World Wide Web, there were similar visions — most notably <a class="link" data-target="xanadu" data-from="the-visionaries-of-the-web">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span> — which shared many features with the web but also proposed some fundamentally different ideas.</p>`
+  },
+
+  'tim-berners-lee': {
+    type: 'text',
+    html: `<p>Tim Berners-Lee<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/6/62/Tim_Berners-Lee_CP.jpg" data-cap="Tim Berners-Lee at Campus Party Brasil, 2009. Silvio Tanaka / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> invented the World Wide Web. During his time as a programmer at CERN, he built the first browser, the first server<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/First_Web_Server.jpg/960px-First_Web_Server.jpg" data-cap="The NeXT computer at CERN that ran the first web server. Coolcaesar / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, and the language every page still uses, <a class="link" data-target="html" data-from="tim-berners-lee">HTML</a>. From the beginning, he worked on the Web not only as a programmer but also as a thinker, applying information theory to make <a class="link" data-target="open-data" data-from="tim-berners-lee">open data</a> and <a class="link" data-target="decentralization" data-from="tim-berners-lee">decentralization</a> core principles of the Web. For this, he was inspired by the work of <a class="link" data-target="the-visionaries-of-the-web" data-from="tim-berners-lee">The visionaries of the Web</a>. The Web's core idea — a network that belongs to everyone, with no central gatekeeper — did not remain in the past. The same spirit drives the <a class="link" data-target="fediverse" data-from="tim-berners-lee">Fediverse</a> today, built on open, shared <a class="link" data-target="protocols" data-from="tim-berners-lee">protocols</a> instead of private gates.</p>`
+  },
+
+  'tim-berners-lees-proposal': {
+    type: 'text',
+    html: `<p>In his 1989 proposal, “Information Management: A Proposal,” written during his time at CERN, Tim Berners-Lee<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/6/62/Tim_Berners-Lee_CP.jpg" data-cap="Tim Berners-Lee at Campus Party Brasil, 2009. Silvio Tanaka / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed the idea that would later become the World-Wide Web, or “Web” for short. He describes his proposal as follows: “Firstly, it discusses the problem of information access at CERN. Then, it introduces the idea of linked information systems and compares them with less flexible ways of finding information.”</p>
+<p>At the center of the proposal — and thus the Web — has always been hypertext<span class="peek-note" data-kind="definition">[?]<template class="peek-body">non-linear text where words or phrases link to other documents — the foundation of the web</template></span>, which made it possible to connect parts of a document and create links within it using hyperlinks. The history of the hyperlink includes many ideas and was shaped by many people until it finally led to the development of the Web through Tim Berners-Lee.</p>
+<p>Already visible in the proposal is the idea of <a class="link" data-target="non-hierarchical-linking" data-from="tim-berners-lees-proposal">non-hierarchical linking</a>: the principle that any document can connect to any other, with no fixed order. This is especially interesting because it shows how his idea was not just about sharing information but also about how hyperlinks can serve as a way to think and research.</p>`
+  },
+
+  'tools': {
+    type: 'text',
+    html: `<p>A tool is never neutral. The tools we use shape what we can make with them. They open certain possibilities and quietly close others. The languages of the web are a clear example of this — arguably an especially strong one — because the whole medium we call the web is made of nothing but its tools.</p>
+<p><a class="link" data-target="html" data-from="tools">HTML</a> shows this through its ease. Because it is built to be as simple as possible, anyone can write a page and create a hyperlink, and the web grew into an open, participatory medium rather than a closed system for specialists. CSS then added a new way to interact with hypertext. It lets a link reflect, for example, whether you have already visited it, giving the hyperlink a visual dimension it did not have before. <a class="link" data-target="javascript" data-from="tools">JavaScript</a> goes further still and creates new ways to interact with HTML and the hyperlink, turning a link from a mere door to another document into something that can trigger almost any action.</p>
+<p>Seen together, the three tools tell the same story: HTML made the web open, CSS made it expressive, and JavaScript made it interactive. None of these qualities were inevitable; they are the shapes that these particular tools made possible. Which is exactly the point: tools define what we create with them.</p>`
+  },
+
+  'web-as-a-common': {
+    type: 'text',
+    html: `<p>The World Wide Web can be understood as a digital commons: a shared resource maintained and governed collectively. <a class="link" data-target="tim-berners-lee" data-from="web-as-a-common">Tim Berners-Lee</a>, who invented the web in 1989, envisioned it not simply as open but as governed by rules to ensure that openness.</p>
+<p>The clearest example is <a class="link" data-target="wikipedia" data-from="web-as-a-common">Wikipedia</a>: it is free to use, free to edit, and built by a global community of volunteers. <a class="link" data-target="open-data" data-from="web-as-a-common">Open data</a> extends this to public datasets and information, making them a shared resource that communities can build upon and improve collectively.</p>
+<p>The web itself is also the infrastructure through which commons are navigated and ideas are shared. Open-source platforms like GitHub illustrate this: contributors work together on shared codebases, governed by licenses rather than private ownership.</p>`
+  },
+
+  'why-the-network-effect-can-favor-the-fediverse': {
+    type: 'text',
+    html: `<p>The network effect in social media describes how, as a platform gains users, even more people join because they can reach a larger audience. Closed, centralized platforms often exploit this effect by profiting from user bases that are accessible only on their own services. This makes it difficult for new <a class="link" data-target="decentralized-social-media" data-from="why-the-network-effect-can-favor-the-fediverse">decentralized social media</a> to attract users. However, my theory is that a turning point can occur when more users choose these platforms over closed ones. Because content and user bases are shared across many decentralized platforms using the same <a class="link" data-target="protocols" data-from="why-the-network-effect-can-favor-the-fediverse">protocols</a>, this growth can happen much faster.</p>`
+  },
+
+  'why-we-need-decentralized-social-media': {
+    type: 'text',
+    html: `<p>Centralized social media holds users hostage. If you dislike a platform's rules, you lose your network, and that threat keeps people in line. <a class="link" data-target="decentralization" data-from="why-we-need-decentralized-social-media">Decentralization</a> breaks this dynamic by giving power back to the user. If a platform fails you, you can simply move, taking your identity and connections with you.</p>
+<p>This fundamentally changes the incentives. Platforms can no longer rely on the network effect alone to survive; they must be good, useful, respectful, and well-designed because users can leave at any time. The result is a new generation of <a class="link" data-target="tools" data-from="why-we-need-decentralized-social-media">tools</a> for self-expression. Instead of being forced into a rigid format dictated by a single corporation, people can choose platforms that fit them. Social media becomes genuinely creative and personal again.</p>
+<p>Perhaps most importantly, <a class="link" data-target="algorithm-based-feeds" data-from="why-we-need-decentralized-social-media">algorithm-based feeds</a> no longer need to serve only advertisers; they can be personalized or completely deactivated. Freed from monetization pressure and attention-grabbing tactics, algorithms can be built to inform and connect, not to addict.</p>`
+  },
+
+  'wikipedia': {
+    type: 'text',
+    html: `<p>From Wikipedia: “Wikipedia is a free online encyclopedia written and maintained by a community of volunteers, known as Wikipedians, through open collaboration and the wiki software MediaWiki. Founded by Jimmy Wales<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Jimmy_Wales_in_New_York_City_March_2023_%28cropped%29.jpg/960px-Jimmy_Wales_in_New_York_City_March_2023_%28cropped%29.jpg" data-cap="Jimmy Wales, co-founder of Wikipedia, 2023. ZMcCune / Wikimedia, CC BY-SA 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Larry Sanger<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/6/6f/Larry-Sanger-headshot-768x1024.jpg" data-cap="Larry Sanger, co-founder of Wikipedia. Larry Sanger / Wikimedia, CC BY-SA 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 2001, Wikipedia has been hosted since 2003 by the Wikimedia Foundation, an American nonprofit organization funded mainly by donations from readers. Wikipedia is the largest and most read reference work in history.”<a class="peek-res" href="https://en.wikipedia.org/wiki/Wikipedia" target="_blank" rel="noopener" data-label="Wikipedia. &quot;Wikipedia.&quot; Wikimedia Foundation.">[↗]</a></p>
+<p>Because of its vast number of entries and everyday use, Wikipedia can be used to research information connections and <a class="link" data-target="knowledge-linking" data-from="wikipedia">knowledge-linking</a>. An example is <a class="link" data-target="all-roads-lead-to-philosophy" data-from="wikipedia">all roads lead to philosophy</a>, a phenomenon that shows how various articles connect to philosophy. In <a class="link" data-target="i-made-a-graph-to-wikipedia" data-from="wikipedia">I Made A Graph to Wikipedia</a>, the connections between entries are mapped, highlighting different groups of articles — so-called “communities” — and their relationships. This can tell us not just about Wikipedia but also about real-world connections among people, countries, politics, sports, and more.</p>`
+  },
+
+  'xanadu': {
+    type: 'text',
+    html: `<p>Before <a class="link" data-target="tim-berners-lees-proposal" data-from="xanadu">Tim Berners-Lee's Proposal</a> in 1989 at CERN, another vision for hypertext already existed. In the 1960s, computer pioneer Ted Nelson<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Ted_Nelson_cropped.jpg/960px-Ted_Nelson_cropped.jpg" data-cap="Ted Nelson, who coined the term hypertext. Dgies / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> began developing Project Xanadu, a system where every document could link to any other, and the links would go both ways. In <a class="link" data-target="html" data-from="xanadu">HTML</a>, a hyperlink is one-directional: the source points to a target, but the target has no idea it is being linked to. This asymmetry is the root cause of <a class="link" data-target="link-rot" data-from="xanadu">link rot</a>: if the target moves or disappears, the link simply breaks, with nothing to warn either side. In Xanadu, every link would be a live, two-way connection; a document could never silently vanish and leave dead ends behind. <a class="link" data-target="tim-berners-lees-proposal" data-from="xanadu">Berners-Lee's proposal</a> chose simplicity instead, and bidirectional links were left out. Xanadu was never fully realized.<a class="peek-res" href="https://www.youtube.com/watch?v=En_2T7KH6RA" target="_blank" rel="noopener" data-label="Nelson, Ted. Xanadu demo, YouTube.">[↗]</a><a class="peek-res" href="https://www.youtube.com/watch?v=8JOD1AQGqEg" target="_blank" rel="noopener" data-label="&quot;Project Xanadu.&quot; YouTube.">[↗]</a></p>`
+  },
+
+  'all-roads-lead-to-philosophy': {
+    type: 'iframe',
+    title: 'All Roads Lead to Philosophy',
+    src: 'https://www.youtube-nocookie.com/embed/dpLG3DpfSlM?si=74YuycY20QoCquYr',
+    allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+    notes: [
+      `The video explains the fascinating phenomenon where almost all Wikipedia articles ultimately lead to the Philosophy page via their first hyperlinks. This process illustrates the ladder of abstraction, in which concepts ascend from specific objects to increasingly general categories. For example: The guppy isn't the typical pet or typical fish, but it's the typical pet fish. It also demonstrates how human knowledge is collectively organized. The structure of Wikipedia reflects that information does not exist in isolation, but is interconnected through social consensus. Ultimately, the source shows how millions of small editorial decisions create a knowledge hierarchy that almost always culminates in fundamental philosophical concepts.`
+    ]
+  },
+
+  'hypercard-changed-everything': {
+    type: 'iframe',
+    title: 'HyperCard Changed Everything',
+    src: 'https://www.youtube-nocookie.com/embed/hxHkNToXga8?si=jOW9wmZEQ4RY0_0k',
+    allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+    notes: [
+      `This video explores the history of HyperCard, one of the most influential <a class="link" data-target="tools" data-from="hypercard-changed-everything">tools</a> Apple ever made, considered a precursor to the modern internet. Developed by programmer Bill Atkinson, it allowed everyday users to create their own applications and interactive media through simple links. The narrative spans from early visions like the <a class="link" data-target="memex" data-from="hypercard-changed-everything">Memex</a> to the success of the game Myst, which was originally built on this platform. Despite its massive influence on creativity and user-friendliness, the project was ultimately discontinued after Steve Jobs returned. Ultimately, HyperCard is portrayed as a symbol of the freedom to link information, which went beyond the mere consumption of today's apps.`
+    ]
+  },
+
+  'i-made-a-graph-to-wikipedia': {
+    type: 'iframe',
+    title: 'I Made a Graph of Wikipedia... This Is What I Found',
+    src: 'https://www.youtube-nocookie.com/embed/JheGL6uSF-4?si=RsGMt-DQi9u61k-B',
+    allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+    notes: [
+      `The video presents a comprehensive data visualization of the English <a class="link" data-target="wikipedia" data-from="i-made-a-graph-to-wikipedia">Wikipedia</a>, where millions of articles and their connections form a complex network. Using algorithms, thematic communities were identified, demonstrating how closely intertwined subject areas like politics, sports, and pop culture are. The analysis illustrates that the size of a node in the network depends directly on the number of incoming links, with the US being the most frequently referenced page. Additionally, the video explores the small-world phenomenon, or “Six Degrees of Separation,” and finds that despite a few isolated “orphans,” most articles can be reached via surprisingly short click paths.`
+    ]
   },
 
   'i-miss-how-google-used-to-work': {
     type: 'iframe',
     title: 'I Miss How Google Used To Work',
-    src: 'https://www.youtube-nocookie.com/embed/GvaOUFwXjf4?si=xAXjLgeVYHzufV7B',
+    src: 'https://www.youtube-nocookie.com/embed/GvaOUFwXjf4?si=dSTM4Y-8awMyNbQ8',
     allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
     notes: [
-      `Great video about how monopolies change the internet in ways they profit off of it. The idea behind the Original Google Algorithm wasn't new, rather a connection of different ideas, creating a new one.`
+      `This is a great video about how monopolies, like Google, change the internet in ways they profit off of it. Caused by its algorithm based on <a class="link" data-target="pagerank" data-from="i-miss-how-google-used-to-work">PageRank</a> and AdSense, Google used to shape which websites are more visible than others. This leads to an <a class="link" data-target="adaptation-to-the-algorithm" data-from="i-miss-how-google-used-to-work">Adaptation to the algorithm</a>.`
+    ]
+  },
+
+  'the-web-that-wasnt': {
+    type: 'iframe',
+    title: 'The Web That Wasn\'t',
+    src: 'https://www.youtube-nocookie.com/embed/72nfrhXroo8?si=SAPnV8mtjxMDaqem',
+    allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+    notes: [
+      `This talk is all about the history of the web before it was even invented. With a view on <a class="link" data-target="the-visionaries-of-the-web" data-from="the-web-that-wasnt">The visionaries of the Web</a>, it tells how many ideas led to the development of the web. Examples like the <a class="link" data-target="memex" data-from="the-web-that-wasnt">Memex</a> or <a class="link" data-target="xanadu" data-from="the-web-that-wasnt">Xanadu</a> show how a comparable information management system was already thought up before the web was invented.`
+    ]
+  },
+
+  'the-web-we-have-to-save': {
+    type: 'iframe',
+    title: 'The Web We Have to Save',
+    src: 'https://hoder.com/en/posts/4',
+    allow: '',
+    notes: [
+      `Blogger, journalist, and researcher Hossein Derakhshan<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Re_publica_faces_2019_%2832858498157%29.jpg/960px-Re_publica_faces_2019_%2832858498157%29.jpg" data-cap="Hossein Derakhshan at re:publica, 2019. Dominik Butzmann / re:publica, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> writes about his experience using social media for the first time after being a blogger in the 2000s and being in jail for seven years. He writes about the freedom of the early internet and blogging culture. In doing so, he uses hyperlinks, among other things, as a way of <a class="link" data-target="non-hierarchical-linking" data-from="the-web-we-have-to-save">non-hierarchical linking</a> and an experience of <a class="link" data-target="decentralization" data-from="the-web-we-have-to-save">decentralization</a>. He writes about how free and personal the experience of reading and sharing his own blog was. In doing so, he argues against social media due to its strict format and constraints.`
     ]
   }
 };
@@ -791,7 +988,7 @@ const FRAGMENTS = {
    2. TUNING CONSTANTS — single source of truth
    ============================================================ */
 const MAX_ACTIVE    = 3;       // active fragments before the oldest dissolves
-const START_ID      = 'algorithmn-based-feeds';  // entry fragment
+const START_ID      = 'start';                   // entry fragment
 
 const FADE_DELAY    = 3000;    // ms a fragment stays fully visible before dissolving
 const FADE_DURATION = 30000;   // ms the dissolve animation runs
@@ -852,11 +1049,30 @@ function overlaps(x, y, w, h) {
 }
 
 // Find a free, random position for a w×h fragment.
+// Uses random sampling (up to 200 candidates) instead of shuffling the entire
+// grid — statistically sufficient for ≤ MAX_ACTIVE fragments and ~20× faster
+// on large viewports.
 function findPosition(w, h) {
   const maxX = window.innerWidth  - w - PAD;
   const maxY = window.innerHeight - h - PAD;
   if (maxX < PAD || maxY < PAD) return null;   // doesn't fit in the window
 
+  // Fast path: nothing placed yet, pick any random spot.
+  if (placed.length === 0) {
+    return {
+      x: PAD + Math.floor(Math.random() * (maxX - PAD)),
+      y: PAD + Math.floor(Math.random() * (maxY - PAD))
+    };
+  }
+
+  const SAMPLE = 200;   // random probes before giving up
+  for (let i = 0; i < SAMPLE; i++) {
+    const x = PAD + Math.floor(Math.random() * (maxX - PAD));
+    const y = PAD + Math.floor(Math.random() * (maxY - PAD));
+    if (!overlaps(x, y, w, h)) return { x, y };
+  }
+
+  // Exhaustive fallback: full grid scan (rare — only when the canvas is very full).
   const candidates = [];
   for (let y = PAD; y <= maxY; y += STEP)
     for (let x = PAD; x <= maxX; x += STEP)
@@ -1372,12 +1588,13 @@ function cacheWords(frag) {
     const r = el.getBoundingClientRect();
     const base = parseFloat(getComputedStyle(el).fontSize);
     // Largest mono size that keeps the word inside its locked width,
-    // capped at 0.85x the body size.
+    // capped at 0.85x the body size. (Position is read live in applyShift,
+    // so only the locked width + mono size are cached here.)
     const fit = Math.min(
       0.85 * base,
       r.width / (Math.max(1, el.textContent.length) * MONO_RATIO)
     );
-    return { el, cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, fit };
+    return { el, w: r.width, fit };
   });
 }
 
@@ -1393,11 +1610,21 @@ function resetWords() {
 
 function applyShift() {
   rafPending = false;
-  // Offset the lens by the fragment's current (soft-capped) drag offset so words and lens stay aligned.
-  const s = followState.get(hoverFrag);
-  const ox = s ? s.rx : 0, oy = s ? s.ry : 0;
+  // Decide membership from the LIVE word positions, not a cache. Swapping a word
+  // to the (inline-block) mono face reflows the paragraph by a hair; against a
+  // stale cache the lens then drifts, words stop un-matting, and they pile up —
+  // which itself reflows the text badly (the reported bug). Reading the real rect
+  // each frame keeps the matched set bounded to the words actually under the lens,
+  // so only a few shift at once and the reflow stays imperceptible.
+  // getBoundingClientRect already includes the fragment's drag transform, so no
+  // separate offset bookkeeping is needed. Read all rects first (one layout flush),
+  // then mutate, so the reads don't thrash layout.
   for (const w of cachedWords) {
-    if (Math.hypot(w.cx + ox - mouseX, w.cy + oy - mouseY) < RADIUS) {
+    const r = w.el.getBoundingClientRect();
+    w.hit = Math.hypot(r.left + r.width / 2 - mouseX, r.top + r.height / 2 - mouseY) < RADIUS;
+  }
+  for (const w of cachedWords) {
+    if (w.hit) {
       w.el.style.width = w.w + 'px';            // lock width before the font swap
       w.el.style.fontSize = w.fit + 'px';       // mono sized to fit that width
       w.el.classList.add('mat');
@@ -2038,15 +2265,15 @@ document.addEventListener('pointerover', e => {
     else openResPeek(trigger);
     startPeekFade();   // sync the tooltip's blur if the parent fragment is dissolving
   }, PEEK_DELAY);
-});
+}, { passive: true });
 document.addEventListener('pointerout', e => {
   const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
   if (!trigger || trigger !== peekTrigger && !peekTimer) return;
   if (trigger && trigger.contains(e.relatedTarget)) return;   // still inside
   closePeek();
-});
-window.addEventListener('scroll', closePeek, true);
-window.addEventListener('resize', closePeek);
+}, { passive: true });
+window.addEventListener('scroll', closePeek, { capture: true, passive: true });
+window.addEventListener('resize', closePeek, { passive: true });
 
 /* ============================================================
    15. BOOTSTRAP
@@ -2100,6 +2327,7 @@ function runIntro() {
   // fragment placement), then build it up with the same pixel-materialize the
   // fragments use. Returns the chosen {x, y, w, h}.
   let introSeq = 0;
+  let entered = false;        // set true on blast; gates every async reveal below
   function placeItem(el, pos) {
     el.style.left = '-9999px';
     el.style.top = '0px';
@@ -2114,6 +2342,7 @@ function runIntro() {
 
     // Plain opacity-fade reveal (fallback / reduced-motion path).
     const showNow = () => {
+      if (entered) return;                       // blast already fired — don't reveal late
       el.style.left = pos.x + 'px';
       el.style.top = pos.y + 'px';
       el.style.opacity = '';
@@ -2128,6 +2357,7 @@ function runIntro() {
     const fxId = '__intro_fx_' + (introSeq++);
     html2canvas(el, { backgroundColor: null, scale: 2, logging: false })
       .then(src => {
+        if (entered) return;                   // blast fired during snapshot — skip the reveal
         el.style.left = pos.x + 'px';
         el.style.top = pos.y + 'px';
         el.style.opacity = '';
@@ -2135,6 +2365,7 @@ function runIntro() {
         runPixelMaterialize({
           id: fxId, src, left: pos.x, top: pos.y, cw: w, ch: h, parent: overlay, duration: MATERIALIZE_DURATION * 2,
           onDone: () => {
+            if (entered) return;               // don't re-show after the blast
             el.classList.add('shown');
             el.style.visibility = '';
             el.style.transition = 'none';        // already faded in via the build-up
@@ -2193,6 +2424,7 @@ function runIntro() {
           duration: MATERIALIZE_DURATION,
           targetOpacity: 0.08,
           onDone: () => {
+            if (entered) return;                         // blast fired — leave it gone
             div.style.visibility = '';
             div.style.opacity = '0.08';                  // snaps instantly — no transition armed yet
             // Arm the eviction fade only on the next frame, so it doesn't
@@ -2202,6 +2434,7 @@ function runIntro() {
         });
       })
       .catch(() => {
+        if (entered) return;                   // blast fired during snapshot — skip
         // Fallback: plain CSS fade if html2canvas fails
         div.style.left = x + 'px';
         div.style.top  = y + 'px';
@@ -2249,11 +2482,22 @@ function runIntro() {
   }, 13000);
 
   // Only the title is clickable — clicking it enters the site.
-  let entered = false;
   function enterSite() {
     if (entered) return;
     entered = true;
     clearInterval(bgTimer);
+
+    // Stop any intro/background materialize still in flight. Otherwise its fx
+    // canvas keeps painting type after the blast, and its onDone re-shows the
+    // element (so a blasted fragment reappears at 8% and never disappears).
+    // Removing the fx canvas halts the frame loop — it bails when fxCanvases[id]
+    // is gone — before onDone can run; the `entered` guards above are backup.
+    Object.keys(fxCanvases).forEach(k => {
+      if (k.startsWith('__bgfrag_') || k.startsWith('__intro_fx_')) {
+        fxCanvases[k].remove();
+        delete fxCanvases[k];
+      }
+    });
 
     // A soft blur on the screen's borders, so content blurs as it rushes off
     // the edges. Strong at the rim, clear in the centre.
