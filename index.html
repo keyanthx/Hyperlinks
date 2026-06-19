@@ -16,7 +16,15 @@
        js/html2canvas.min.js). If the script is missing, dissolves fall back to
        a plain CSS opacity fade (checked everywhere via
        typeof html2canvas !== 'function'). -->
-  <script async src="js/html2canvas.min.js"></script>
+  <!-- Desktop only: html2canvas drives the pixel-dissolve animations. The mobile
+       (≤768px) feed uses none of them, so it never loads this ~196KB library. -->
+  <script>
+    if (!window.matchMedia('(max-width: 768px)').matches) {
+      var s = document.createElement('script');
+      s.async = true; s.src = 'js/html2canvas.min.js';
+      document.head.appendChild(s);
+    }
+  </script>
   <style>
     /* Self-hosted fonts (fonts/) — fully local; no external font host is ever
    contacted. All are open-licensed (see fonts/LICENSE.txt).
@@ -1006,6 +1014,243 @@
       white-space: nowrap;
       border: 0;
     }
+
+    /* ============================================================
+       MOBILE (≤768px) — vertical reading feed.
+       Everything here is scoped to ≤768px, and the desktop JS engine
+       (canvas, drag, hover material-shift, dissolve, 13s intro) is
+       skipped at this width. The desktop experience is unaffected.
+       ============================================================ */
+    @media (max-width: 768px) {
+      body {
+        width: auto;
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      /* Hide desktop chrome; the mobile UI is built by initMobile(). */
+      #canvas, footer, #colophon { display: none !important; }
+
+      /* Top bar */
+      .m-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #fff;
+        border-bottom: 1px solid #eee;
+      }
+      .m-title {
+        font-family: var(--serif);
+        font-size: 21px;
+        color: #0000EE;
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+      .m-menu-btn {
+        font-family: "Overpass Mono", monospace;
+        font-size: 20px;
+        line-height: 1;
+        background: none;
+        border: 0;
+        color: #111;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      .m-menu {
+        position: absolute;
+        top: calc(100% + 1px);
+        right: 8px;
+        min-width: 180px;
+        background: #fff;
+        border: 1px solid #111;
+        display: none;
+        flex-direction: column;
+      }
+      .m-menu.open { display: flex; }
+      .m-menu button {
+        font-family: "Overpass Mono", monospace;
+        font-size: 13px;
+        text-align: left;
+        padding: 11px 14px;
+        background: none;
+        border: 0;
+        border-bottom: 1px solid #eee;
+        color: #111;
+        cursor: pointer;
+      }
+      .m-menu button:last-child { border-bottom: 0; }
+      .m-menu button:hover,
+      .m-menu button:focus-visible { background: #111; color: #fff; }
+
+      /* Feed */
+      .m-feed {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 18px 18px 55vh;
+      }
+      .m-card {
+        margin: 0 0 26px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid #ececec;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 0.45s ease, transform 0.45s ease;
+      }
+      .m-card.shown { opacity: 1; transform: none; }
+      .m-caption {
+        font-family: "Overpass Mono", monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #888;
+        margin-bottom: 10px;
+      }
+      .m-card p {
+        font-family: var(--serif);
+        font-size: 18px;
+        line-height: 1.62;
+        color: #111;
+        margin-bottom: 0.8em;
+      }
+      .m-card .media { width: 100%; height: auto; margin: 6px 0 4px; }
+      .m-card iframe.media,
+      .m-card .embed-consent { height: 220px; }
+      .m-card .note { font-size: 13px; color: #555; line-height: 1.55; }
+
+      /* Links need a persistent underline on mobile (desktop only shows it on hover). */
+      .m-card a.link {
+        color: #0000EE;
+        text-decoration: underline;
+        background: none;
+        cursor: pointer;
+      }
+      .m-card a.link.visited { color: #551A8B; }
+      .m-card .peek-img,
+      .m-card .peek-note,
+      .m-card .peek-res { cursor: pointer; }
+
+      /* Inline-expanded definition ([?] note) */
+      .m-note-expanded {
+        display: block;
+        font-family: "Overpass Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #444;
+        background: #f4f3ef;
+        border-left: 2px solid #0000EE;
+        padding: 8px 10px;
+        margin: 8px 0;
+      }
+
+      /* Short intro */
+      .m-intro {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        text-align: center;
+        padding: 24px;
+        transition: opacity 0.6s ease;
+      }
+      .m-intro.leaving { opacity: 0; pointer-events: none; }
+      .m-intro-title {
+        font-family: var(--serif);
+        font-size: clamp(46px, 17vw, 92px);
+        color: #0000EE;
+        opacity: 0;
+        transition: opacity 0.8s ease;
+      }
+      .m-intro-title.shown { opacity: 1; }
+      .m-intro-credit {
+        font-family: "Overpass Mono", monospace;
+        font-size: 12px;
+        color: #666;
+      }
+      .m-intro-enter {
+        font-family: "Overpass Mono", monospace;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #111;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+        animation: intro-pulse 1.8s ease-in-out infinite;
+      }
+      .m-intro-enter.shown { opacity: 1; }
+
+      /* Full-screen image lightbox */
+      .m-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        background: rgba(0, 0, 0, 0.92);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .m-lightbox.open { display: flex; }
+      .m-lightbox img { max-width: 100%; max-height: 78vh; object-fit: contain; }
+      .m-lightbox .m-cap {
+        color: #ddd;
+        font-family: "Overpass Mono", monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        margin-top: 14px;
+        text-align: center;
+        max-width: 600px;
+      }
+      .m-lightbox .m-close {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        color: #fff;
+        background: none;
+        border: 0;
+        font-size: 30px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      /* Floating back control */
+      .m-back {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 60;
+        font-family: "Overpass Mono", monospace;
+        font-size: 13px;
+        background: #111;
+        color: #fff;
+        border: 0;
+        padding: 10px 14px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      }
+      .m-back[hidden] { display: none; }
+
+      /* Font-consent banner: stack vertically so nothing overflows a phone. */
+      #font-consent-banner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 14px 16px;
+      }
+      #font-consent-banner .font-consent-btn { width: 100%; }
+    }
   </style>
 </head>
 
@@ -1245,6 +1490,10 @@
        - iframe: src, notes[]
        notes[] entries are HTML strings and may contain .link anchors.
        ============================================================ */
+    // Mobile switch — decided once at load. Width-based (≤768px) so the desktop
+    // experience is never affected. Crossing the breakpoint reloads once (below).
+    const IS_MOBILE = window.matchMedia('(max-width: 768px)').matches;
+
     const FRAGMENTS = {
       'adaptation-to-the-algorithm': {
         type: 'text',
@@ -2054,6 +2303,7 @@
        9. LINK INTERACTION (delegated click handler)
        ============================================================ */
     document.addEventListener('click', e => {
+      if (IS_MOBILE) return;                 // mobile handles link taps in initMobile()
       // Clicks may land on a .word span inside the link, hence closest().
       const link = e.target.closest('.link');
       if (!link) return;
@@ -2866,6 +3116,7 @@
     }
 
     document.addEventListener('pointerover', e => {
+      if (IS_MOBILE) return;                 // mobile uses tap → lightbox / inline note
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger || trigger === peekTrigger) return;
       // ignore moving between inner .word spans of the same trigger
@@ -2880,6 +3131,7 @@
       }, PEEK_DELAY);
     }, { passive: true });
     document.addEventListener('pointerout', e => {
+      if (IS_MOBILE) return;
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger || trigger !== peekTrigger && !peekTimer) return;
       if (trigger && trigger.contains(e.relatedTarget)) return;   // still inside
@@ -2889,6 +3141,7 @@
     // Keyboard accessibility: open peeks on focus, close on blur — mirrors the
     // pointer handlers above so Tab / Shift-Tab works for screen readers.
     document.addEventListener('focusin', e => {
+      if (IS_MOBILE) return;
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger || trigger === peekTrigger) return;
       clearTimeout(peekTimer);
@@ -2901,6 +3154,7 @@
       }, PEEK_DELAY);
     });
     document.addEventListener('focusout', e => {
+      if (IS_MOBILE) return;
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger) return;
       // Don't close if focus moved to something still inside the same trigger.
@@ -3239,7 +3493,252 @@
       }
     }
 
-    runIntro();
+    /* ============================================================
+       MOBILE (≤768px) — vertical feed engine. Reuses FRAGMENTS,
+       mediaMarkup(), markVisited(), openModal(); builds its own UI.
+       Never runs on desktop. The desktop interaction handlers above
+       are no-ops on mobile (guarded by IS_MOBILE).
+       ============================================================ */
+    function initMobile() {
+      const feedStack = [];
+
+      // --- Chrome: sticky top bar + menu ---
+      const topbar = document.createElement('header');
+      topbar.className = 'm-topbar';
+      const titleBtn = document.createElement('button');
+      titleBtn.type = 'button';
+      titleBtn.className = 'm-title';
+      titleBtn.textContent = 'Hyperlinks';
+      titleBtn.setAttribute('aria-label', 'Scroll to top');
+      titleBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+      const menuWrap = document.createElement('div');
+      menuWrap.style.position = 'relative';
+      const menuBtn = document.createElement('button');
+      menuBtn.type = 'button';
+      menuBtn.className = 'm-menu-btn';
+      menuBtn.textContent = '≡';
+      menuBtn.setAttribute('aria-label', 'Menu');
+      const menu = document.createElement('div');
+      menu.className = 'm-menu';
+      menu.setAttribute('role', 'menu');
+      const closeMenu = () => menu.classList.remove('open');
+      const addMenuItem = (label, fn) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.addEventListener('click', () => { closeMenu(); fn(); });
+        menu.appendChild(b);
+      };
+      addMenuItem('Documentation', () => openModal(document.getElementById('doc-overlay')));
+      addMenuItem('Legal · privacy', () => openModal(document.getElementById('legal-overlay')));
+      addMenuItem('Your path', () => openPath());
+      menuBtn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('open'); });
+      document.addEventListener('click', e => { if (!menuWrap.contains(e.target)) closeMenu(); });
+      menuWrap.append(menuBtn, menu);
+      topbar.append(titleBtn, menuWrap);
+
+      // --- Feed container ---
+      const feed = document.createElement('main');
+      feed.className = 'm-feed';
+      feed.id = 'm-feed';
+      feed.setAttribute('role', 'main');
+
+      // --- Floating back control ---
+      const backBtn = document.createElement('button');
+      backBtn.type = 'button';
+      backBtn.className = 'm-back';
+      backBtn.textContent = '← back';
+      backBtn.hidden = true;
+      backBtn.addEventListener('click', () => history.back());
+
+      // --- Full-screen image lightbox ---
+      const lightbox = document.createElement('div');
+      lightbox.className = 'm-lightbox';
+      lightbox.setAttribute('aria-hidden', 'true');
+      lightbox.innerHTML = '<button class="m-close" type="button" aria-label="Close image">×</button><img alt=""><div class="m-cap"></div>';
+      const lbImg = lightbox.querySelector('img');
+      const lbCap = lightbox.querySelector('.m-cap');
+      const closeLightbox = () => {
+        lightbox.classList.remove('open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        lbImg.removeAttribute('src');
+      };
+      lightbox.addEventListener('click', e => {
+        if (e.target === lightbox || e.target.classList.contains('m-close')) closeLightbox();
+      });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox(); });
+
+      // --- "Your path" overlay (reuses the .doc-overlay modal system) ---
+      const pathOverlay = document.createElement('div');
+      pathOverlay.className = 'doc-overlay';
+      pathOverlay.id = 'm-path-overlay';
+      pathOverlay.setAttribute('aria-hidden', 'true');
+      pathOverlay.innerHTML = '<div class="doc-modal" role="dialog" aria-modal="true" aria-label="Your path"><button class="doc-close" aria-label="Close your path">×</button><div class="doc-content"><h2>your path</h2><ol class="m-path-list" style="padding-left:1.2em;line-height:1.9"></ol></div></div>';
+      pathOverlay.querySelector('.doc-close').addEventListener('click', () => closeModal(pathOverlay));
+      pathOverlay.addEventListener('click', e => { if (e.target === pathOverlay) closeModal(pathOverlay); });
+      const pathList = pathOverlay.querySelector('.m-path-list');
+      function openPath() {
+        pathList.innerHTML = '';
+        feedStack.forEach(id => {
+          const li = document.createElement('li');
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'm-title';
+          b.style.cssText = 'font-size:16px;text-align:left';
+          const f = FRAGMENTS[id];
+          b.textContent = f && f.type !== 'text' && f.title ? f.title : id;
+          b.addEventListener('click', () => { closeModal(pathOverlay); scrollToCard(id); });
+          li.appendChild(b);
+          pathList.appendChild(li);
+        });
+        openModal(pathOverlay);
+      }
+
+      document.body.append(topbar, feed, backBtn, lightbox, pathOverlay);
+
+      // --- Card building ---
+      function buildCard(id) {
+        const frag = FRAGMENTS[id];
+        markVisited(id);
+        const card = document.createElement('article');
+        card.className = 'm-card';
+        card.id = 'm-' + id;
+        card.dataset.fragId = id;
+        const caption = frag.type === 'text' ? id : (frag.title || id);
+        card.innerHTML = `<h2 class="m-caption">${caption}</h2>` +
+          (frag.type === 'text' ? frag.html : mediaMarkup(frag));
+        // Demote dead links to plain text; give live links a focus target.
+        card.querySelectorAll('a.link').forEach(a => {
+          const t = a.dataset.target;
+          if (!FRAGMENTS[t]) { a.classList.remove('link'); a.removeAttribute('href'); return; }
+          a.setAttribute('href', '#');
+        });
+        // Accessible peek triggers.
+        card.querySelectorAll('.peek-note').forEach(el => {
+          el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button');
+        });
+        card.querySelectorAll('.peek-img').forEach(el => {
+          el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button');
+          el.setAttribute('aria-label', 'Show image: ' + (el.dataset.cap || 'preview'));
+        });
+        return card;
+      }
+
+      function scrollToCard(id) {
+        const card = document.getElementById('m-' + id);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      function updateBack() { backBtn.hidden = feedStack.length <= 1; }
+
+      function addCard(id, animate) {
+        const card = buildCard(id);
+        feed.appendChild(card);
+        feedStack.push(id);
+        if (animate) requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('shown')));
+        else card.classList.add('shown');
+        updateBack();
+        return card;
+      }
+      function removeLastCard() {
+        const id = feedStack.pop();
+        const card = document.getElementById('m-' + id);
+        if (card) card.remove();
+        updateBack();
+      }
+
+      // Open a fragment: append + scroll, or scroll to it if already in the feed.
+      function openFragment(id, fromId) {
+        if (!FRAGMENTS[id]) return;
+        if (fromId) followedEdges.add(fromId + '>' + id);
+        if (document.getElementById('m-' + id)) { scrollToCard(id); return; }
+        addCard(id, true);
+        history.pushState({ stack: [...feedStack] }, '');
+        setTimeout(() => scrollToCard(id), 60);
+      }
+
+      // Reconcile feed to a target stack (browser back/forward).
+      function applyStack(target) {
+        while (feedStack.length > target.length) removeLastCard();
+        for (let i = feedStack.length; i < target.length; i++) addCard(target[i], false);
+        if (feedStack.length) scrollToCard(feedStack[feedStack.length - 1]);
+      }
+      window.addEventListener('popstate', e => {
+        applyStack((e.state && e.state.stack) || [START_ID]);
+      });
+
+      // Prefer a downsized mobile copy (images/sm/…) when one exists.
+      const mobileImg = src => src.replace(/^images\//, 'images/sm/');
+
+      function openLightbox(trigger) {
+        const src = trigger.dataset.img;
+        if (!src) return;
+        lbImg.onerror = () => { lbImg.onerror = null; lbImg.src = src; };  // fall back to full image
+        lbImg.src = mobileImg(src);
+        lbImg.alt = trigger.dataset.cap || '';
+        lbCap.textContent = trigger.dataset.cap || '';
+        lightbox.classList.add('open');
+        lightbox.setAttribute('aria-hidden', 'false');
+      }
+
+      function toggleNote(note) {
+        const next = note.nextElementSibling;
+        if (next && next.classList.contains('m-note-expanded')) { next.remove(); return; }
+        const body = note.querySelector('.peek-body');
+        if (!body) return;
+        const exp = document.createElement('span');
+        exp.className = 'm-note-expanded';
+        // .peek-body is a <template>; its text lives in .content, not textContent.
+        exp.textContent = (body.content ? body.content.textContent : body.textContent).trim();
+        note.after(exp);
+      }
+
+      // --- Delegated taps inside the feed ---
+      feed.addEventListener('click', e => {
+        const link = e.target.closest('a.link');
+        if (link) {
+          e.preventDefault();
+          link.classList.add('visited');
+          const card = link.closest('.m-card');
+          openFragment(link.dataset.target, card && card.dataset.fragId);
+          return;
+        }
+        const img = e.target.closest('.peek-img');
+        if (img) { e.preventDefault(); openLightbox(img); return; }
+        const note = e.target.closest('.peek-note');
+        if (note) { e.preventDefault(); toggleNote(note); return; }
+        // .peek-res is a real external <a> — let it open normally.
+      });
+
+      // --- Short intro (~title + tap to enter), then seed the start fragment ---
+      const intro = document.createElement('div');
+      intro.className = 'm-intro';
+      intro.innerHTML =
+        '<div class="m-intro-title">Hyperlinks</div>' +
+        '<div class="m-intro-credit">A project by Keyan Thanner</div>' +
+        '<div class="m-intro-enter">tap to enter</div>';
+      document.body.appendChild(intro);
+      requestAnimationFrame(() => intro.querySelector('.m-intro-title').classList.add('shown'));
+      setTimeout(() => intro.querySelector('.m-intro-enter').classList.add('shown'), 1200);
+      let mobileEntered = false;
+      function enterMobile() {
+        if (mobileEntered) return;
+        mobileEntered = true;
+        intro.classList.add('leaving');
+        setTimeout(() => intro.remove(), 600);
+        addCard(START_ID, false);
+        history.replaceState({ stack: [...feedStack] }, '');
+      }
+      intro.addEventListener('click', enterMobile);
+    }
+
+    if (IS_MOBILE) initMobile();
+    else runIntro();
+
+    // Breakpoint cross (rotate / window resize): reload once so the correct
+    // engine initializes cleanly. Guard ensures this only fires on an actual flip.
+    window.addEventListener('resize', () => {
+      if (window.matchMedia('(max-width: 768px)').matches !== IS_MOBILE) location.reload();
+    });
 
     // Hook skip-to-content click to skip the intro immediately if active
     document.querySelector('.skip-link').addEventListener('click', e => {
@@ -3298,14 +3797,10 @@
         banner.style.display = 'none';
       });
 
-      // "See privacy notice" button opens the legals overlay.
+      // "See privacy notice" button opens the legals overlay via the same
+      // openModal() function used by the footer "See legals" button.
       document.getElementById('font-consent-legals-btn').addEventListener('click', () => {
-        const overlay = document.getElementById('legal-overlay');
-        if (overlay) {
-          overlay.removeAttribute('aria-hidden');
-          overlay.style.display = '';
-          overlay.querySelector('.doc-close')?.focus();
-        }
+        openModal(document.getElementById('legal-overlay'));
       });
     }());
   </script>
