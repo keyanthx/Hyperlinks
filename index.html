@@ -1124,6 +1124,24 @@
       .m-card .embed-consent { height: 220px; }
       .m-card .note { font-size: 13px; color: #555; line-height: 1.55; }
 
+      /* Peek images shown inline (mobile has no hover); tap to enlarge. */
+      .m-figure { margin: 14px 0; text-align: center; }
+      .m-figure img {
+        max-width: 100%;
+        max-height: 70vh;
+        height: auto;
+        border: 1px solid #ececec;
+        cursor: pointer;
+      }
+      .m-figure figcaption {
+        font-family: "Overpass Mono", monospace;
+        font-size: 11px;
+        line-height: 1.45;
+        color: #888;
+        margin-top: 6px;
+        text-align: left;
+      }
+
       /* Links need a persistent underline on mobile (desktop only shows it on hover). */
       .m-card a.link {
         color: #0000EE;
@@ -1177,6 +1195,16 @@
         font-family: "Overpass Mono", monospace;
         font-size: 12px;
         color: #666;
+      }
+      .m-intro-notice {
+        font-family: "Overpass Mono", monospace;
+        font-size: 11px;
+        line-height: 1.5;
+        color: #888;
+        max-width: 280px;
+        border: 1px solid #e2e2e2;
+        padding: 8px 12px;
+        margin-top: 4px;
       }
       .m-intro-enter {
         font-family: "Overpass Mono", monospace;
@@ -3613,13 +3641,42 @@
           if (!FRAGMENTS[t]) { a.classList.remove('link'); a.removeAttribute('href'); return; }
           a.setAttribute('href', '#');
         });
-        // Accessible peek triggers.
+        // Accessible definition triggers.
         card.querySelectorAll('.peek-note').forEach(el => {
           el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button');
         });
-        card.querySelectorAll('.peek-img').forEach(el => {
-          el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button');
-          el.setAttribute('aria-label', 'Show image: ' + (el.dataset.cap || 'preview'));
+        // Mobile has no hover, so the desktop "tap a tiny marker to peek" is
+        // invisible. Render each peek image inline as a visible figure (tap to
+        // enlarge in the lightbox), replacing the tiny inline marker.
+        const makeFigure = (src, cap) => {
+          const fig = document.createElement('figure');
+          fig.className = 'm-figure';
+          const img = document.createElement('img');
+          img.alt = cap || '';
+          img.dataset.img = src;          // full path; lightbox/onerror use it
+          img.dataset.cap = cap || '';
+          img.onerror = () => { img.onerror = null; img.src = src; };  // fall back to full image
+          img.src = mobileImg(src);
+          fig.appendChild(img);
+          if (cap) {
+            const fc = document.createElement('figcaption');
+            fc.textContent = cap;
+            fig.appendChild(fc);
+          }
+          return fig;
+        };
+        // Insert figures right after the paragraph each marker sits in (in order).
+        card.querySelectorAll('p').forEach(p => {
+          let anchor = p;
+          p.querySelectorAll('.peek-img').forEach(span => {
+            if (span.dataset.img) { const fig = makeFigure(span.dataset.img, span.dataset.cap); anchor.after(fig); anchor = fig; }
+            span.remove();
+          });
+        });
+        // Any stray markers not inside a <p>: append at the end.
+        card.querySelectorAll('.peek-img').forEach(span => {
+          if (span.dataset.img) card.appendChild(makeFigure(span.dataset.img, span.dataset.cap));
+          span.remove();
         });
         return card;
       }
@@ -3702,8 +3759,8 @@
           openFragment(link.dataset.target, card && card.dataset.fragId);
           return;
         }
-        const img = e.target.closest('.peek-img');
-        if (img) { e.preventDefault(); openLightbox(img); return; }
+        const figImg = e.target.closest('.m-figure img');
+        if (figImg) { openLightbox(figImg); return; }
         const note = e.target.closest('.peek-note');
         if (note) { e.preventDefault(); toggleNote(note); return; }
         // .peek-res is a real external <a> — let it open normally.
@@ -3715,6 +3772,7 @@
       intro.innerHTML =
         '<div class="m-intro-title">Hyperlinks</div>' +
         '<div class="m-intro-credit">A project by Keyan Thanner</div>' +
+        '<div class="m-intro-notice">This site is best experienced on desktop.</div>' +
         '<div class="m-intro-enter">tap to enter</div>';
       document.body.appendChild(intro);
       requestAnimationFrame(() => intro.querySelector('.m-intro-title').classList.add('shown'));
