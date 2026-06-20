@@ -8,41 +8,32 @@
   <meta name="description"
     content="An interactive web essay exploring the history, structure, and future of hyperlinks.">
   <meta name="theme-color" content="#ffffff">
-  <!-- This page is fully self-contained: every asset (fonts/, js/, images/) is
-       served from this origin. No third-party host is contacted on load, so no
-       visitor IP is disclosed to a third party without consent. See the privacy
-       notice in the footer's "legals" dialog. -->
-  <!-- html2canvas powers the dissolve snapshots. Self-hosted (MIT licensed,
-       js/html2canvas.min.js). If the script is missing, dissolves fall back to
-       a plain CSS opacity fade (checked everywhere via
-       typeof html2canvas !== 'function'). -->
-  <!-- Desktop only: html2canvas drives the pixel-dissolve animations. The mobile
-       (≤768px) feed uses none of them, so it never loads this ~196KB library. -->
-  <script>
-    if (!window.matchMedia('(max-width: 768px)').matches) {
-      var s = document.createElement('script');
-      s.async = true; s.src = 'js/html2canvas.min.js';
-      document.head.appendChild(s);
-    }
-  </script>
+  <!-- Preconnect to external origins so the TLS handshake starts early. -->
+  <link rel="preconnect" href="https://use.typekit.net" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <!-- Adobe Fonts kit: narkiss-asaf-variable (body font). Loaded async so it
+     doesn't block first paint; the body falls back to self-hosted Verily Serif
+     Mono until the kit arrives (font-display: swap in the kit handles FOUT). -->
+  <link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css" media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css">
+  </noscript>
+  <!-- html2canvas powers the dissolve snapshots. Loaded async so it doesn't
+     block parsing. If the CDN is unreachable or the script hasn't arrived yet,
+     dissolves fall back to a plain CSS opacity fade (checked everywhere via
+     typeof html2canvas !== 'function'). -->
+  <script async src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
-    /* Self-hosted fonts (fonts/) — fully local; no external font host is ever
-   contacted. All are open-licensed (see fonts/LICENSE.txt).
-   - Tinos: body serif. Metric-compatible with Times New Roman; SIL OFL.
-   - Overpass Mono: hover material-shift, captions, footer; SIL OFL. */
+    /* Self-hosted fonts (fonts/) — they load offline and in browsers that
+   block external font hosts.
+   - Verily Serif Mono: body fallback if the Adobe Fonts kit is blocked —
+     a monospace drawn to resemble Times New Roman
+     (license: fonts/verily-license.txt).
+   - Overpass Mono: hover material-shift, captions, footer. */
     @font-face {
-      font-family: 'Tinos';
-      src: url('fonts/tinos-400.woff2') format('woff2');
-      font-weight: 400;
-      font-style: normal;
-      font-display: swap;
-    }
-
-    @font-face {
-      font-family: 'Tinos';
-      src: url('fonts/tinos-700.woff2') format('woff2');
-      font-weight: 700;
-      font-style: normal;
+      font-family: 'Verily Serif Mono';
+      src: url('fonts/verily-serif-mono.otf') format('opentype');
+      font-weight: normal;
       font-display: swap;
     }
 
@@ -56,74 +47,6 @@
     /* ============================================================
    1. Reset / page chrome
    ============================================================ */
-
-    /* Font stack: Tinos (self-hosted, SIL OFL) is the default serif.
-   When the visitor consents to Adobe Fonts, JS updates this variable
-   to load narkiss-asaf-variable from use.typekit.net and swaps the stack. */
-    :root {
-      --serif: "Tinos", "Times New Roman", Times, serif;
-    }
-
-    /* Font consent banner — shown once until visitor decides.
-   Styled in Overpass Mono to match the site's machine-type aesthetic. */
-    #font-consent-banner {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 9999;
-      background: #fff;
-      border-top: 1px solid #111;
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      font-family: "Overpass Mono", monospace;
-      font-size: 11px;
-      line-height: 1.5;
-      color: #111;
-    }
-
-    #font-consent-banner p {
-      flex: 1;
-      margin: 0;
-      font-family: "Overpass Mono", monospace;
-      font-size: 11px;
-      color: #111;
-    }
-
-    #font-consent-banner a {
-      color: #111;
-    }
-
-    .font-consent-btn {
-      font-family: "Overpass Mono", monospace;
-      font-size: 11px;
-      padding: 6px 12px;
-      border: 1px solid #111;
-      background: #fff;
-      color: #111;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .font-consent-btn:hover,
-    .font-consent-btn:focus-visible {
-      background: #111;
-      color: #fff;
-    }
-
-    #font-consent-accept {
-      background: #111;
-      color: #fff;
-    }
-
-    #font-consent-accept:hover,
-    #font-consent-accept:focus-visible {
-      background: #444;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -131,7 +54,7 @@
     }
 
     body {
-      font-family: var(--serif);
+      font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
       font-variation-settings: 'wght' 400, 'MONO' 0;
       width: 100vw;
       height: 100vh;
@@ -248,57 +171,6 @@
       pointer-events: none;
     }
 
-    /* Click-to-load consent gate for third-party embeds (YouTube). The real
-   iframe is built only after the visitor clicks "Load video", so no request
-   reaches Google before consent (GDPR Art. 6(1)(a)). Sized like iframe.media
-   so collision measurement stays correct before load. */
-    .embed-consent {
-      height: 260px;
-      background: #e8e6e0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 14px;
-    }
-
-    .embed-consent-inner {
-      max-width: 300px;
-    }
-
-    .embed-consent-title {
-      font-family: "Overpass Mono", monospace;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 8px;
-      color: #111;
-    }
-
-    .embed-consent-text {
-      font-family: "Overpass Mono", monospace;
-      font-size: 11px;
-      line-height: 1.5;
-      color: #555;
-      margin-bottom: 12px;
-    }
-
-    .embed-load {
-      font-family: "Overpass Mono", monospace;
-      font-size: 12px;
-      padding: 7px 14px;
-      border: 1px solid #111;
-      background: #fff;
-      color: #111;
-      cursor: pointer;
-    }
-
-    .embed-load:hover,
-    .embed-load:focus-visible {
-      background: #111;
-      color: #fff;
-    }
-
     .note {
       margin-top: 8px;
       font-size: 12px;
@@ -362,6 +234,11 @@
 
     /* :visited — set in JS once clicked */
 
+    /* Links whose target fragment doesn't exist yet — greyish blue (authoring aid). */
+    a.link.unwritten {
+      color: #546d8c;
+    }
+
     /* Hover, and while the target is on the canvas: full underline (sweeps in from
    the left; only background-size transitions, so the position flip is unseen). */
     /* Underline-sweep only for things that navigate (real links + [↗] sources).
@@ -370,7 +247,7 @@
     a.link:focus-visible,
     a.peek-res:hover,
     a.peek-res:focus-visible,
-    a.link.on-canvas {
+    a.link.on-canvas:not(.dead) {
       background-position: 0 100%;
       background-size: 100% 1.5px;
     }
@@ -411,11 +288,50 @@
       cursor: zoom-in;
     }
 
-    a.link:active {
+    a.link:not(.dead):active {
       color: #FF0000;
     }
 
     /* :active — while pressed */
+
+    /* Link rot: a link whose target has died. Greyed and struck through;
+   clicking it yields a 404 (handled in JS) instead of spawning. */
+    a.link.dead {
+      color: #767676;
+      text-decoration: line-through;
+      text-decoration-thickness: 1px;
+      cursor: not-allowed;
+      background-image: none;
+      /* no underline on dead links (strikethrough only) */
+    }
+
+    /* 404 toast shown when a dead link is clicked */
+    .toast404 {
+      position: fixed;
+      z-index: 6000;
+      pointer-events: none;
+      font-family: "Overpass Mono", monospace;
+      font-size: 11px;
+      color: #b00;
+      white-space: nowrap;
+      animation: toast404 0.9s ease-out forwards;
+    }
+
+    @keyframes toast404 {
+      0% {
+        opacity: 0;
+        transform: translateY(0);
+      }
+
+      15% {
+        opacity: 1;
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(-18px);
+      }
+    }
 
     /* ============================================================
    Inline "peek" tooltips — NOT navigation (distinct from a.link).
@@ -623,7 +539,7 @@
     }
 
     .intro-title {
-      font-family: var(--serif);
+      font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
       font-size: clamp(40px, 7vw, 88px);
       line-height: 1.2;
       white-space: nowrap;
@@ -651,7 +567,7 @@
     }
 
     .intro-credit {
-      font-family: var(--serif);
+      font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
       font-size: clamp(14px, 1.6vw, 18px);
       white-space: nowrap;
     }
@@ -1014,295 +930,16 @@
       white-space: nowrap;
       border: 0;
     }
-
-    /* ============================================================
-       MOBILE (≤768px) — vertical reading feed.
-       Everything here is scoped to ≤768px, and the desktop JS engine
-       (canvas, drag, hover material-shift, dissolve, 13s intro) is
-       skipped at this width. The desktop experience is unaffected.
-       ============================================================ */
-    @media (max-width: 768px) {
-      body {
-        width: auto;
-        height: auto;
-        min-height: 100vh;
-        overflow-x: hidden;
-        overflow-y: auto;
-      }
-      /* Hide desktop chrome; the mobile UI is built by initMobile(). */
-      #canvas, footer, #colophon { display: none !important; }
-
-      /* Top bar */
-      .m-topbar {
-        position: sticky;
-        top: 0;
-        z-index: 50;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        background: #fff;
-        border-bottom: 1px solid #eee;
-      }
-      .m-title {
-        font-family: var(--serif);
-        font-size: 21px;
-        color: #0000EE;
-        background: none;
-        border: 0;
-        padding: 0;
-        cursor: pointer;
-      }
-      .m-menu-btn {
-        font-family: "Overpass Mono", monospace;
-        font-size: 20px;
-        line-height: 1;
-        background: none;
-        border: 0;
-        color: #111;
-        padding: 4px 8px;
-        cursor: pointer;
-      }
-      .m-menu {
-        position: absolute;
-        top: calc(100% + 1px);
-        right: 8px;
-        min-width: 180px;
-        background: #fff;
-        border: 1px solid #111;
-        display: none;
-        flex-direction: column;
-      }
-      .m-menu.open { display: flex; }
-      .m-menu button {
-        font-family: "Overpass Mono", monospace;
-        font-size: 13px;
-        text-align: left;
-        padding: 11px 14px;
-        background: none;
-        border: 0;
-        border-bottom: 1px solid #eee;
-        color: #111;
-        cursor: pointer;
-      }
-      .m-menu button:last-child { border-bottom: 0; }
-      .m-menu button:hover,
-      .m-menu button:focus-visible { background: #111; color: #fff; }
-
-      /* Feed */
-      .m-feed {
-        max-width: 680px;
-        margin: 0 auto;
-        padding: 18px 18px 55vh;
-      }
-      .m-card {
-        margin: 0 0 26px;
-        padding-bottom: 22px;
-        border-bottom: 1px solid #ececec;
-        opacity: 0;
-        transform: translateY(10px);
-        transition: opacity 0.45s ease, transform 0.45s ease;
-      }
-      .m-card.shown { opacity: 1; transform: none; }
-      .m-caption {
-        font-family: "Overpass Mono", monospace;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: #888;
-        margin-bottom: 10px;
-      }
-      .m-card p {
-        font-family: var(--serif);
-        font-size: 18px;
-        line-height: 1.62;
-        color: #111;
-        margin-bottom: 0.8em;
-      }
-      .m-card .media { width: 100%; height: auto; margin: 6px 0 4px; }
-      .m-card iframe.media,
-      .m-card .embed-consent { height: 220px; }
-      .m-card .note { font-size: 13px; color: #555; line-height: 1.55; }
-
-      /* Peek images shown inline (mobile has no hover); tap to enlarge. */
-      .m-figure { margin: 14px 0; text-align: center; }
-      .m-figure img {
-        max-width: 100%;
-        max-height: 70vh;
-        height: auto;
-        border: 1px solid #ececec;
-        cursor: pointer;
-      }
-      .m-figure figcaption {
-        font-family: "Overpass Mono", monospace;
-        font-size: 11px;
-        line-height: 1.45;
-        color: #888;
-        margin-top: 6px;
-        text-align: left;
-      }
-
-      /* Links need a persistent underline on mobile (desktop only shows it on hover). */
-      .m-card a.link {
-        color: #0000EE;
-        text-decoration: underline;
-        background: none;
-        cursor: pointer;
-      }
-      .m-card a.link.visited { color: #551A8B; }
-      .m-card .peek-img,
-      .m-card .peek-note,
-      .m-card .peek-res { cursor: pointer; }
-
-      /* Inline-expanded definition ([?] note) */
-      .m-note-expanded {
-        display: block;
-        font-family: "Overpass Mono", monospace;
-        font-size: 13px;
-        line-height: 1.5;
-        color: #444;
-        background: #f4f3ef;
-        border-left: 2px solid #0000EE;
-        padding: 8px 10px;
-        margin: 8px 0;
-      }
-
-      /* Short intro */
-      .m-intro {
-        position: fixed;
-        inset: 0;
-        z-index: 200;
-        background: #fff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
-        text-align: center;
-        padding: 24px;
-        transition: opacity 0.6s ease;
-      }
-      .m-intro.leaving { opacity: 0; pointer-events: none; }
-      .m-intro-title {
-        font-family: var(--serif);
-        font-size: clamp(46px, 17vw, 92px);
-        color: #0000EE;
-        opacity: 0;
-        transition: opacity 0.8s ease;
-      }
-      .m-intro-title.shown { opacity: 1; }
-      .m-intro-credit {
-        font-family: "Overpass Mono", monospace;
-        font-size: 12px;
-        color: #666;
-      }
-      .m-intro-notice {
-        font-family: "Overpass Mono", monospace;
-        font-size: 11px;
-        line-height: 1.5;
-        color: #888;
-        max-width: 280px;
-        border: 1px solid #e2e2e2;
-        padding: 8px 12px;
-        margin-top: 4px;
-      }
-      .m-intro-enter {
-        font-family: "Overpass Mono", monospace;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #111;
-        opacity: 0;
-        transition: opacity 0.6s ease;
-        animation: intro-pulse 1.8s ease-in-out infinite;
-      }
-      .m-intro-enter.shown { opacity: 1; }
-
-      /* Full-screen image lightbox */
-      .m-lightbox {
-        position: fixed;
-        inset: 0;
-        z-index: 300;
-        background: rgba(0, 0, 0, 0.92);
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-      }
-      .m-lightbox.open { display: flex; }
-      .m-lightbox img { max-width: 100%; max-height: 78vh; object-fit: contain; }
-      .m-lightbox .m-cap {
-        color: #ddd;
-        font-family: "Overpass Mono", monospace;
-        font-size: 12px;
-        line-height: 1.5;
-        margin-top: 14px;
-        text-align: center;
-        max-width: 600px;
-      }
-      .m-lightbox .m-close {
-        position: absolute;
-        top: 14px;
-        right: 18px;
-        color: #fff;
-        background: none;
-        border: 0;
-        font-size: 30px;
-        line-height: 1;
-        cursor: pointer;
-      }
-
-      /* Floating back control */
-      .m-back {
-        position: fixed;
-        right: 16px;
-        bottom: 16px;
-        z-index: 60;
-        font-family: "Overpass Mono", monospace;
-        font-size: 13px;
-        background: #111;
-        color: #fff;
-        border: 0;
-        padding: 10px 14px;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-      }
-      .m-back[hidden] { display: none; }
-
-      /* Font-consent banner: stack vertically so nothing overflows a phone. */
-      #font-consent-banner {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-        padding: 14px 16px;
-      }
-      #font-consent-banner .font-consent-btn { width: 100%; }
-    }
   </style>
 </head>
 
 <body>
-  <!-- Font consent banner: shown until visitor accepts or declines Adobe Fonts.
-       Adobe Fonts (narkiss-asaf-variable) requires a connection to use.typekit.net
-       (Adobe Inc., USA), which transmits the visitor's IP. The banner blocks that
-       request until explicit consent is given (GDPR Art. 6(1)(a), §25 TDDDG). -->
-  <div id="font-consent-banner" role="dialog" aria-label="Font preference" style="display:none">
-    <p>This site uses <strong>Adobe Fonts</strong> for its intended typeface
-      (<em>narkiss-asaf-variable</em>). Loading it connects to Adobe Inc. (USA) and
-      transfers your IP address. Declining uses a local fallback (Tinos).
-      <button type="button" id="font-consent-legals-btn" style="background:none;border:none;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer">See privacy notice.</button>
-    </p>
-    <button type="button" class="font-consent-btn" id="font-consent-decline">Use fallback</button>
-    <button type="button" class="font-consent-btn" id="font-consent-accept">Accept Adobe Fonts</button>
-  </div>
-
   <a class="skip-link" href="#canvas">Skip to content</a>
   <h1 class="visually-hidden">Hyperlinks — An interactive web essay by Keyan Thanner</h1>
   <main id="canvas" role="main" aria-live="polite" aria-label="Interactive fragment canvas"></main>
   <footer><span id="hyperlinks-title" role="button" tabindex="0"
       aria-label="Hyperlinks session statistics">Hyperlinks</span>. A project by Keyan Thanner, supervised by <a
-      id="credit-link" href="https://www.ktell.de" target="_blank" rel="noopener noreferrer">Jun. Prof. Katharina Köhler</a>. <span
+      id="credit-link" href="https://www.ktell.de" target="_blank" rel="noopener">Jun. Prof. Katharina Köhler</a>. <span
       id="legal-link" role="button" tabindex="0">See legals</span>. <span id="doc-link" role="button" tabindex="0">See
       documentation</span>. · <span id="fx-toggle" role="button" tabindex="0" aria-pressed="true"
       title="hover interactions">✦ on</span></footer>
@@ -1388,99 +1025,24 @@
     <div class="doc-modal" role="dialog" aria-modal="true" aria-label="Legal">
       <button class="doc-close" aria-label="Close legal">×</button>
       <div class="doc-content">
-        <h2>Legal · Rechtliches</h2>
-        <!-- Bracketed [ ... ] fields must be completed before publishing:
-             postal address, hosting provider name, log-retention period, date. -->
+        <h2>Legal</h2>
+        <!-- Placeholder legal text — replace with the real imprint / privacy notice. -->
 
-        <h3 class="fragment-caption">imprint · impressum</h3>
-        <p><strong>Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz):</strong></p>
-        <p>Keyan Thanner<br>
-          [Straße und Hausnummer]<br>
-          [PLZ und Ort]<br>
-          Deutschland</p>
-        <p>Kontakt: <a class="link" href="mailto:keyanthanner@proton.me">keyanthanner@proton.me</a></p>
-        <p>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV: Keyan Thanner (Anschrift wie oben).
-          „Hyperlinks“ ist ein studentisches Projekt, betreut von Jun.-Prof. Katharina Köhler.</p>
-        <p class="note">English: Information pursuant to § 5 DDG. Person responsible: Keyan Thanner,
-          [street and number], [postal code and city], Germany. Contact: keyanthanner@proton.me.
-          “Hyperlinks” is a student project supervised by Jun.-Prof. Katharina Köhler. Please replace
-          the bracketed address before publishing.</p>
+        <h3 class="fragment-caption">imprint</h3>
+        <p>Placeholder imprint. Hyperlinks — a project by Keyan Thanner, supervised by Jun. Prof. Katharina Köhler.
+          Replace this with the responsible person, address, and contact details required for the imprint.</p>
+        <p>Contact: placeholder@example.com. Replace with the actual contact address.</p>
 
-        <h3 class="fragment-caption">privacy · datenschutz</h3>
-        <p><strong>Verantwortlicher:</strong> Keyan Thanner (Kontaktdaten siehe Impressum).</p>
-        <p><strong>1. Allgemeines.</strong> Diese Website ist statisch und in sich geschlossen. Skripte und Bilder
-          werden ausschließlich von diesem Server ausgeliefert. Es werden <strong>keine Cookies</strong> gesetzt und
-          <strong>keine Analyse- oder Tracking-Dienste</strong> eingesetzt. Im Browser wird ausschließlich der
-          Schriftart-Einwilligungsstatus gespeichert (localStorage, technisch notwendig, kein Ablaufdatum). Beim
-          normalen Aufruf der Seite werden <strong>keine Daten an Dritte</strong> übermittelt, sofern Sie die
-          optionalen Dienste (Adobe Fonts, YouTube) nicht freischalten.</p>
-        <p><strong>2. Server-Logfiles (Art. 6 Abs. 1 lit. f DSGVO).</strong> Beim Aufruf der Seite verarbeitet
-          der Hosting-Anbieter [Name des Hosters] technisch notwendige Zugriffsdaten (u. a. IP-Adresse,
-          Datum/Uhrzeit, abgerufene Datei, Browsertyp). Rechtsgrundlage ist das berechtigte Interesse am sicheren
-          und stabilen Betrieb. Die Logs werden nach [z. B. 7] Tagen gelöscht. Mit dem Hosting-Anbieter ist ein
-          Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO abzuschließen.</p>
-        <p><strong>3. Adobe Fonts / Typekit (optional, Art. 6 Abs. 1 lit. a DSGVO, § 25 TDDDG).</strong>
-          Beim ersten Besuch wird gefragt, ob die Schrift <em>narkiss-asaf-variable</em> von Adobe Fonts geladen
-          werden darf. Nur wenn Sie zustimmen, wird eine Verbindung zu <code>use.typekit.net</code>
-          (Adobe Inc., USA) hergestellt und Ihre IP-Adresse sowie technische Browserdaten an Adobe übermittelt.
-          Adobe stützt sich dabei auf Standardvertragsklauseln (Art. 46 DSGVO). Ihre Einwilligung wird im
-          localStorage Ihres Browsers gespeichert und kann jederzeit durch Löschen der Seiten-Daten im Browser
-          widerrufen werden. Ohne Einwilligung wird die lokal gehostete Ersatzschrift (Tinos, SIL OFL) verwendet.
-          Datenschutzerklärung von Adobe:
-          <a class=”link” href=”https://www.adobe.com/privacy/policy.html” target=”_blank” rel=”noopener noreferrer”>adobe.com/privacy/policy.html</a>.</p>
-        <p><strong>4. YouTube-Videos (Klick-zum-Laden, Art. 6 Abs. 1 lit. a DSGVO).</strong> Videos werden
-          <strong>erst nach ausdrücklichem Klick</strong> auf „Load video” geladen. Erst dann wird eine Verbindung
-          zu YouTube (Google Ireland Ltd., Irland; ggf. Google LLC, USA) hergestellt und Ihre IP-Adresse sowie
-          Geräteinformationen an Google übertragen. Vorher findet keine Übertragung statt. Eine Übermittlung in die
-          USA kann erfolgen; Google stützt sich auf das EU-US Data Privacy Framework und Standardvertragsklauseln.
-          Die Einwilligung ist freiwillig, für jedes Video erforderlich und gilt nur für die aktuelle Sitzung.
-          Datenschutzerklärung von Google:
-          <a class=”link” href=”https://policies.google.com/privacy” target=”_blank” rel=”noopener noreferrer”>policies.google.com/privacy</a>.</p>
-        <p><strong>5. Ihre Rechte.</strong> Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16),
-          Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und
-          Widerspruch (Art. 21) sowie das Recht, eine erteilte Einwilligung jederzeit mit Wirkung für die Zukunft
-          zu widerrufen (Art. 7 Abs. 3). Zudem besteht ein Beschwerderecht bei einer Aufsichtsbehörde (Art. 77),
-          z. B. der für Ihren Wohnsitz zuständigen Landesdatenschutzbehörde.</p>
-        <p class=”note”>English summary: Scripts and images are served only from this server. No cookies, no
-          analytics/tracking. The only browser storage used is a localStorage key recording your Adobe Fonts
-          preference (technically necessary). The host ([host name]) processes access data incl. your IP in server
-          logs on the basis of legitimate interest (Art. 6(1)(f)), deleted after [7] days.
-          <strong>Adobe Fonts</strong> (narkiss-asaf-variable) is loaded only if you consent via the banner on
-          first visit; only then is your IP sent to Adobe Inc. (USA — standard contractual clauses, Art. 46 GDPR).
-          Withdraw consent any time by clearing site data in your browser.
-          <strong>YouTube videos</strong> load only after you click “Load video” (consent, Art. 6(1)(a)); only
-          then is your IP sent to Google (Ireland/USA — EU-US DPF & standard contractual clauses).
-          You have the rights of access, rectification, erasure, restriction, portability and objection
-          (Art. 15–21), to withdraw consent at any time (Art. 7(3)), and to lodge a complaint with a supervisory
-          authority (Art. 77).</p>
-        <p class="note">Stand / Last updated: [Datum].</p>
+        <h3 class="fragment-caption">privacy</h3>
+        <p>Placeholder privacy notice. This page is static and self-contained: fonts are hosted locally and there are no
+          analytics, cookies, or third-party trackers. Replace this paragraph with the real privacy statement once
+          finalised.</p>
+        <p>If any external content is embedded — for example a remote video or an embedded web page — note here what
+          data those third parties may receive when you load it.</p>
 
-        <h3 class="fragment-caption">copyright · urheberrecht</h3>
-        <p>© Keyan Thanner. Texte und eigene Gestaltung dieses Projekts: alle Rechte vorbehalten, sofern nicht
-          anders angegeben.</p>
-        <p><strong>Schriften / Fonts:</strong> Tinos und Overpass Mono — SIL Open Font License 1.1
-          (siehe fonts/LICENSE.txt). „html2canvas“ — MIT-Lizenz.</p>
-        <p><strong>Bildnachweise / Image credits</strong> (Wikimedia Commons, lokal gehostet · locally hosted):</p>
-        <p class="note">
-          Tim Berners-Lee — Silvio Tanaka, CC BY 2.0<br>
-          Sergey Brin — Allen Lew, CC BY-SA 2.0<br>
-          Larry Page — Stansfield PL, CC BY-SA 3.0<br>
-          Larry Sanger — Larry Sanger, CC BY-SA 4.0<br>
-          Jimmy Wales — ZMcCune, CC BY-SA 4.0<br>
-          Vannevar Bush — U.S. Dept. of Defense, Public Domain<br>
-          Douglas Engelbart — SRI International, CC BY-SA 3.0<br>
-          Ted Nelson — Dgies, CC BY-SA 3.0<br>
-          Brendan Eich — Darcy Padilla, CC BY-SA 3.0<br>
-          Bill Atkinson — Jay Cross, CC BY 2.0<br>
-          Eugene Garfield — Chemical Heritage Foundation, CC BY-SA 3.0<br>
-          Hossein Derakhshan — Dominik Butzmann / re:publica, CC BY-SA 2.0<br>
-          Jack Dorsey — Mark Warner, CC BY 2.0<br>
-          Memex model (Deutsches Technikmuseum) — Bunyk, CC BY 4.0<br>
-          First web server, NeXT at CERN — Coolcaesar, CC BY-SA 3.0<br>
-          Mastodon mascot — dopatwo, AGPL<br>
-          Candlestick telephone — Nuberger13, Public Domain<br>
-          All via Wikimedia Commons.
-        </p>
+        <h3 class="fragment-caption">copyright</h3>
+        <p>Placeholder copyright notice. © Keyan Thanner. All texts and images are placeholders until replaced. State
+          here the licence and any attributions for third-party material.</p>
       </div>
     </div>
   </div>
@@ -1518,14 +1080,10 @@
        - iframe: src, notes[]
        notes[] entries are HTML strings and may contain .link anchors.
        ============================================================ */
-    // Mobile switch — decided once at load. Width-based (≤768px) so the desktop
-    // experience is never affected. Crossing the breakpoint reloads once (below).
-    const IS_MOBILE = window.matchMedia('(max-width: 768px)').matches;
-
     const FRAGMENTS = {
       'adaptation-to-the-algorithm': {
         type: 'text',
-        html: `<p>The more social media use <a class="link" data-target="algorithm-based-feeds" data-from="adaptation-to-the-algorithm">algorithm-based feeds</a>, the more powerful algorithms become. This leads to content adapting to suit the algorithm, getting pushed, and gaining more views and money. A current example is “ragebait”<span class="peek-note" data-kind="definition">[?]<template class="peek-body">content engineered to provoke outrage or strong reactions, maximising engagement over information</template></span><a class="peek-res" href="https://news.stanford.edu/stories/2025/12/rage-bait-explained-oxford-word-year" target="_blank" rel="noopener noreferrer" data-label="Stanford News. &quot;Rage Bait: Oxford's 2025 Word of the Year.&quot; Dec. 2025.">[↗]</a>, a form of clickbait that drives interaction because even negative interaction leads to more recommendations.</p>
+        html: `<p>The more social media use <a class="link" data-target="algorithm-based-feeds" data-from="adaptation-to-the-algorithm">algorithm-based feeds</a>, the more powerful algorithms become. This leads to content adapting to suit the algorithm, getting pushed, and gaining more views and money. A current example is “ragebait”<span class="peek-note" data-kind="definition">[?]<template class="peek-body">content engineered to provoke outrage or strong reactions, maximising engagement over information</template></span><a class="peek-res" href="https://news.stanford.edu/stories/2025/12/rage-bait-explained-oxford-word-year" target="_blank" rel="noopener" data-label="Stanford News. &quot;Rage Bait: Oxford's 2025 Word of the Year.&quot; Dec. 2025.">[↗]</a>, a form of clickbait that drives interaction because even negative interaction leads to more recommendations.</p>
 <p>This adaptation isn't bound to social media. Google's <a class="link" data-target="pagerank" data-from="adaptation-to-the-algorithm">PageRank</a> led to SEO (search engine optimization), as <a class="link" data-target="i-miss-how-google-used-to-work" data-from="adaptation-to-the-algorithm">I Miss How Google Used To Work</a> describes. Google also distributes ads via AdSense<span class="peek-note" data-kind="definition">[?]<template class="peek-body">Google's ad network — publishers embed it to display Google-sold ads in exchange for a revenue share</template></span>, ranking sites higher the longer people stayed. Sites became dependent on Google's rules; if you couldn't be seen via Google, you were practically unfindable on the internet.</p>
 <p>This creates creative boundaries, making it hard for creatives to reach an audience through these platforms, and is bad for <a class="link" data-target="non-hierarchical-linking" data-from="adaptation-to-the-algorithm">non-hierarchical linking</a> because the platforms are hierarchical due to their monopoly status.</p>`
       },
@@ -1539,14 +1097,14 @@
 
       'bluesky': {
         type: 'text',
-        html: `<p>Bluesky is a social network that uses the AT Protocol, a type of open <a class="link" data-target="protocols" data-from="bluesky">protocols</a>. It was founded by then-CEO of Twitter, Jack Dorsey<span class="peek-img" data-img="images/jack-dorsey-in-washington-d-c-2018-44538272181.jpg" data-cap="Jack Dorsey, who initiated Bluesky, 2018. Mark Warner / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, as a kind of decentralized Twitter.</p>
+        html: `<p>Bluesky is a social network that uses the AT Protocol, a type of open <a class="link" data-target="protocols" data-from="bluesky">protocols</a>. It was founded by then-CEO of Twitter, Jack Dorsey<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Jack_Dorsey_in_Washington_D.C._-_2018_%2844538272181%29_%28cropped%29.jpg/960px-Jack_Dorsey_in_Washington_D.C._-_2018_%2844538272181%29_%28cropped%29.jpg" data-cap="Jack Dorsey, who initiated Bluesky, 2018. Mark Warner / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, as a kind of decentralized Twitter.</p>
 <p>It is often seen as a competitor to the <a class="link" data-target="fediverse" data-from="bluesky">Fediverse</a>, as both represent a type of decentralized social network.</p>`
       },
 
       'dead-internet-theory': {
         type: 'text',
-        html: `<p>The Dead Internet theory posits that the vast majority of internet activity is generated by AI bots, not humans. The theory originated in 2021 on 4chan, where it was claimed that the internet “died” in 2016 and has since been dominated by bots. The literal claim is almost certainly false, but it points to a real and growing trend: in 2025, 53% of web traffic came from bots, 40% of which was classified as harmful<a class="peek-res" href="https://www.statista.com/chart/35950/share-of-global-web-traffic-generated-by-humans-and-bots-since-2018/" target="_blank" rel="noopener noreferrer" data-label="Statista. &quot;Share of global web traffic generated by humans and bots since 2018.&quot; 2025.">[↗]</a>. With the rise of generative AI, this theory has only become more relevant.</p>
-<p>Part of the theory is also a feeling rather than a hard fact: that content online is no longer made for humans but for algorithmic recommendations. As a result, content increasingly evolves to be pushed by algorithms, generating the most views, interactions, and, consequently, advertising revenue. One example is SEO (search engine optimization), used to rank higher in search engines such as Google's <a class="link" data-target="pagerank" data-from="dead-internet-theory">PageRank</a><a class="peek-res" href="https://www.cnet.com/home/internet/what-is-the-dead-internet-theory/" target="_blank" rel="noopener noreferrer" data-label="CNET. &quot;What Is the Dead Internet Theory?&quot; 2024.">[↗]</a>.</p>`
+        html: `<p>The Dead Internet theory posits that the vast majority of internet activity is generated by AI bots, not humans. The theory originated in 2021 on 4chan, where it was claimed that the internet “died” in 2016 and has since been dominated by bots. The literal claim is almost certainly false, but it points to a real and growing trend: in 2025, 53% of web traffic came from bots, 40% of which was classified as harmful<a class="peek-res" href="https://www.statista.com/chart/35950/share-of-global-web-traffic-generated-by-humans-and-bots-since-2018/" target="_blank" rel="noopener" data-label="Statista. &quot;Share of global web traffic generated by humans and bots since 2018.&quot; 2025.">[↗]</a>. With the rise of generative AI, this theory has only become more relevant.</p>
+<p>Part of the theory is also a feeling rather than a hard fact: that content online is no longer made for humans but for algorithmic recommendations. As a result, content increasingly evolves to be pushed by algorithms, generating the most views, interactions, and, consequently, advertising revenue. One example is SEO (search engine optimization), used to rank higher in search engines such as Google's <a class="link" data-target="pagerank" data-from="dead-internet-theory">PageRank</a><a class="peek-res" href="https://www.cnet.com/home/internet/what-is-the-dead-internet-theory/" target="_blank" rel="noopener" data-label="CNET. &quot;What Is the Dead Internet Theory?&quot; 2024.">[↗]</a>.</p>`
       },
 
       'decentralization': {
@@ -1568,32 +1126,32 @@
         type: 'text',
         html: `<p>With the rise of social media, the web got dehumanized. Sounds paradoxical, right? How can platforms built around being social end up controlled by algorithms and bots?</p>
 <p>The layer between you and content used to be a person: your feed showed people you followed and you found things because someone shared a link. Now an algorithm chooses instead, creating <a class="link" data-target="algorithm-based-feeds" data-from="dehumanization">algorithm-based feeds</a> optimized for attention, not for what someone liked. But sharing content online isn't dead; it's just not the default anymore.</p>
-<p>It goes further: in 2025, 53% of traffic online comes from bots, not people<a class="peek-res" href="https://www.statista.com/chart/35950/share-of-global-web-traffic-generated-by-humans-and-bots-since-2018/" target="_blank" rel="noopener noreferrer" data-label="Statista. &quot;Share of global web traffic generated by humans and bots since 2018.&quot; 2025.">[↗]</a>. And even further, AI makes it easy to produce content with no human author, flooding the web with “AI slop.” Taken to the extreme, this is <a class="link" data-target="dead-internet-theory" data-from="dehumanization">“dead internet theory”</a>: much of the web is bots reacting to content, with barely any humans involved.</p>`
+<p>It goes further: in 2025, 53% of traffic online comes from bots, not people<a class="peek-res" href="https://www.statista.com/chart/35950/share-of-global-web-traffic-generated-by-humans-and-bots-since-2018/" target="_blank" rel="noopener" data-label="Statista. &quot;Share of global web traffic generated by humans and bots since 2018.&quot; 2025.">[↗]</a>. And even further, AI makes it easy to produce content with no human author, flooding the web with “AI slop.” Taken to the extreme, this is <a class="link" data-target="dead-internet-theory" data-from="dehumanization">“dead internet theory”</a>: much of the web is bots reacting to content, with barely any humans involved.</p>`
       },
 
       'fediverse': {
         type: 'text',
-        html: `<p>The Fediverse is an infrastructure for social media platforms based on <a class="link" data-target="decentralization" data-from="fediverse">decentralization</a>. Its goal is to create connections and share information across different platforms. The most important one right now is called Mastodon<span class="peek-img" data-img="images/mastodon-mascot-greeting.png" data-cap="Mastodon's mascot. dopatwo / Wikimedia, AGPL">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, which gained popularity after Elon Musk bought Twitter in 2022<a class="peek-res" href="https://blog.joinmastodon.org/2022/04/twitter-buyout-puts-mastodon-into-spotlight/" target="_blank" rel="noopener noreferrer" data-label="Mastodon Blog. &quot;Twitter's new owner puts Mastodon in the spotlight.&quot; Apr. 2022.">[↗]</a>.</p>
+        html: `<p>The Fediverse is an infrastructure for social media platforms based on <a class="link" data-target="decentralization" data-from="fediverse">decentralization</a>. Its goal is to create connections and share information across different platforms. The most important one right now is called Mastodon<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Mastodon_Mascot_%28Greeting%29.png/960px-Mastodon_Mascot_%28Greeting%29.png" data-cap="Mastodon's mascot. dopatwo / Wikimedia, AGPL">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, which gained popularity after Elon Musk bought Twitter in 2022<a class="peek-res" href="https://blog.joinmastodon.org/2022/04/twitter-buyout-puts-mastodon-into-spotlight/" target="_blank" rel="noopener" data-label="Mastodon Blog. &quot;Twitter's new owner puts Mastodon in the spotlight.&quot; Apr. 2022.">[↗]</a>.</p>
 <p>There are many reasons for the Fediverse and <a class="link" data-target="why-we-need-decentralized-social-media" data-from="fediverse">why we need decentralized social media</a>, especially the shift of power from platforms to users. Right now, the <a class="link" data-target="network-effect" data-from="fediverse">network-effect</a> locks people into social media platforms criticized for their <a class="link" data-target="algorithm-based-feeds" data-from="fediverse">algorithm-based feeds</a> and monetization. At the same time, there are good reasons <a class="link" data-target="why-the-network-effect-can-favor-the-fediverse" data-from="fediverse">Why the network effect can favor the Fediverse</a>, especially the shared users across platforms.</p>`
       },
 
       'filter-bubbles': {
         type: 'text',
         html: `<p>Filter bubbles describe the theory that algorithmic recommendations on social networks lead to a one-sided, confirming flow of information.</p>
-<p>In <a class="link" data-target="the-web-we-have-to-save" data-from="filter-bubbles">The Web We Have to Save</a>, Hossein Derakhshan critiques social media algorithms. Users no longer check dedicated web pages directly; instead, they are “fed by a never-ending flow of information that's picked for them by complex — and secretive — algorithms.” But there are also voices against the idea of filter bubbles caused by social media algorithms. Peter M. Dahlgren says that the societal effects aren't as big as we think due to the interactions of various social groups outside the digital world. Also, studies show that the bigger problem is confirmation bias.<a class="peek-res" href="https://www.bpb.de/themen/medien-journalismus/soziale-medien/545800/mythos-filterblase-sind-wir-wirklich-so-isoliert/#footnote-target-6" target="_blank" rel="noopener noreferrer" data-label="Dahlgren, Peter M. &quot;Mythos Filterblase.&quot; Bundeszentrale für politische Bildung, 2023.">[↗]</a></p>
+<p>In <a class="link" data-target="the-web-we-have-to-save" data-from="filter-bubbles">The Web We Have to Save</a>, Hossein Derakhshan critiques social media algorithms. Users no longer check dedicated web pages directly; instead, they are “fed by a never-ending flow of information that's picked for them by complex — and secretive — algorithms.” But there are also voices against the idea of filter bubbles caused by social media algorithms. Peter M. Dahlgren says that the societal effects aren't as big as we think due to the interactions of various social groups outside the digital world. Also, studies show that the bigger problem is confirmation bias.<a class="peek-res" href="https://www.bpb.de/themen/medien-journalismus/soziale-medien/545800/mythos-filterblase-sind-wir-wirklich-so-isoliert/#footnote-target-6" target="_blank" rel="noopener" data-label="Dahlgren, Peter M. &quot;Mythos Filterblase.&quot; Bundeszentrale für politische Bildung, 2023.">[↗]</a></p>
 <p>I think we get what we make of our <a class="link" data-target="tools" data-from="filter-bubbles">tools</a>. Even though algorithms can sometimes be viewed critically, they offer benefits. The social network <a class="link" data-target="bluesky" data-from="filter-bubbles">Bluesky</a>, for example, makes it possible to customize the algorithm yourself to gain more control over your own consumption.</p>`
       },
 
       'html': {
         type: 'text',
-        html: `<p>With the development of the web, <a class="link" data-target="tim-berners-lee" data-from="html">Tim Berners-Lee</a> developed a markup language that every site on the web uses, HTML (short for Hypertext Markup Language). It is the skeleton of a web page. It defines the structure, the way a frame defines a house. It uses so-called “elements” to define the website's content. As the name implies, hyperlinks are at the core of HTML. To make a hyperlink, you simply use an <em>&lt;a href="..."&gt;</em> element. It holds the address of the target. This can be a URL, a fragment within the same page (<em>#section</em>), an email (<em>mailto:</em>), a phone number (<em>tel:</em>), or a relative path to another file. Hyperlinks in HTML can be added not only to text but also to images and basically any other element (buttons, whole blocks)<a class="peek-res" href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank" rel="noopener noreferrer" data-label="MDN Web Docs. &quot;HTML: HyperText Markup Language.&quot;">[↗]</a>. The fact that a hyperlink can be attached in so many ways shows how central it is to the web. At the core, hyperlinks in HTML use <a class="link" data-target="non-hierarchical-linking" data-from="html">non-hierarchical linking</a>, so they can link to anything without any hierarchy. Unlike <a class="link" data-target="xanadu" data-from="html">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span>, these links work only in one direction, so the target doesn't know it's being linked to, which is also the reason for <a class="link" data-target="link-rot" data-from="html">link rot</a>.</p>`
+        html: `<p>With the development of the web, <a class="link" data-target="tim-berners-lee" data-from="html">Tim Berners-Lee</a> developed a markup language that every site on the web uses, HTML (short for Hypertext Markup Language). It is the skeleton of a web page. It defines the structure, the way a frame defines a house. It uses so-called “elements” to define the website's content. As the name implies, hyperlinks are at the core of HTML. To make a hyperlink, you simply use an <em>&lt;a href="..."&gt;</em> element. It holds the address of the target. This can be a URL, a fragment within the same page (<em>#section</em>), an email (<em>mailto:</em>), a phone number (<em>tel:</em>), or a relative path to another file. Hyperlinks in HTML can be added not only to text but also to images and basically any other element (buttons, whole blocks)<a class="peek-res" href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank" rel="noopener" data-label="MDN Web Docs. &quot;HTML: HyperText Markup Language.&quot;">[↗]</a>. The fact that a hyperlink can be attached in so many ways shows how central it is to the web. At the core, hyperlinks in HTML use <a class="link" data-target="non-hierarchical-linking" data-from="html">non-hierarchical linking</a>, so they can link to anything without any hierarchy. Unlike <a class="link" data-target="xanadu" data-from="html">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span>, these links work only in one direction, so the target doesn't know it's being linked to, which is also the reason for <a class="link" data-target="link-rot" data-from="html">link rot</a>.</p>`
       },
 
       'hypercard': {
         type: 'text',
-        html: `<p>HyperCard is software developed by Bill Atkinson<span class="peek-img" data-img="images/bill-atkinson-at-25-years-of-hypercard-event.jpg" data-cap="Bill Atkinson at a 25 Years of HyperCard event, 2012. Jay Cross / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 1987 for Apple<a class="peek-res" href="https://en.wikipedia.org/wiki/HyperCard" target="_blank" rel="noopener noreferrer" data-label="Wikipedia. &quot;HyperCard.&quot; Wikimedia Foundation.">[↗]</a>. Its main function was to connect different documents and media to one another, creating paths. This can be seen as a digital version of the <a class="link" data-target="memex" data-from="hypercard">Memex</a>, whose idea was developed in 1939 by Vannevar Bush.</p>
+        html: `<p>HyperCard is software developed by Bill Atkinson<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Bill_Atkinson_at_25_years_of_HyperCard_event_%28cropped%29.jpeg/960px-Bill_Atkinson_at_25_years_of_HyperCard_event_%28cropped%29.jpeg" data-cap="Bill Atkinson at a 25 Years of HyperCard event, 2012. Jay Cross / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 1987 for Apple<a class="peek-res" href="https://en.wikipedia.org/wiki/HyperCard" target="_blank" rel="noopener" data-label="Wikipedia. &quot;HyperCard.&quot; Wikimedia Foundation.">[↗]</a>. Its main function was to connect different documents and media to one another, creating paths. This can be seen as a digital version of the <a class="link" data-target="memex" data-from="hypercard">Memex</a>, whose idea was developed in 1939 by Vannevar Bush.</p>
 <p>In <a class="link" data-target="hypercard-changed-everything" data-from="hypercard">HyperCard Changed Everything</a>, the history and impact of HyperCard are explored.</p>
-<p>With the HyperCard simulator<a class="peek-res" href="https://hcsimulator.com/" target="_blank" rel="noopener noreferrer" data-label="HyperCard Simulator. hcsimulator.com.">[↗]</a>, you can simulate HyperCard on your own desktop.</p>`
+<p>With the HyperCard simulator<a class="peek-res" href="https://hcsimulator.com/" target="_blank" rel="noopener" data-label="HyperCard Simulator. hcsimulator.com.">[↗]</a>, you can simulate HyperCard on your own desktop.</p>`
       },
 
       'index': {
@@ -1605,7 +1163,7 @@
 
       'javascript': {
         type: 'text',
-        html: `<p>JavaScript was developed by Brendan Eich<span class="peek-img" data-img="images/brendan-eich-mozilla-foundation.jpg" data-cap="Brendan Eich, creator of JavaScript. Darcy Padilla / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 1995. Its goal was to enrich functionality beyond HTML. JavaScript was inspired by HyperTalk, the scripting language used for <a class="link" data-target="hypercard" data-from="javascript">HyperCard</a>, a program by Apple that used hyperlinks. The initial use cases for JavaScript were entering information into forms and performing actions like playing audio files<a class="peek-res" href="https://cybercultural.com/p/1995-the-birth-of-javascript/" target="_blank" rel="noopener noreferrer" data-label="CyberCultural. &quot;1995: The Birth of JavaScript.&quot;">[↗]</a>. With that, it created new clickable actions, not just moving beyond hyperlinks but expanding the concept of hyperlinks through the creation of more versatile buttons.</p>`
+        html: `<p>JavaScript was developed by Brendan Eich<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Brendan_Eich_Mozilla_Foundation_official_photo.jpg/960px-Brendan_Eich_Mozilla_Foundation_official_photo.jpg" data-cap="Brendan Eich, creator of JavaScript. Darcy Padilla / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 1995. Its goal was to enrich functionality beyond HTML. JavaScript was inspired by HyperTalk, the scripting language used for <a class="link" data-target="hypercard" data-from="javascript">HyperCard</a>, a program by Apple that used hyperlinks. The initial use cases for JavaScript were entering information into forms and performing actions like playing audio files<a class="peek-res" href="https://cybercultural.com/p/1995-the-birth-of-javascript/" target="_blank" rel="noopener" data-label="CyberCultural. &quot;1995: The Birth of JavaScript.&quot;">[↗]</a>. With that, it created new clickable actions, not just moving beyond hyperlinks but expanding the concept of hyperlinks through the creation of more versatile buttons.</p>`
       },
 
       'knowledge-linking': {
@@ -1621,12 +1179,12 @@
 
       'memex': {
         type: 'text',
-        html: `<p>In 1939, long before personal computers or the web existed, Vannevar Bush<span class="peek-img" data-img="images/vannevar-bush.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> imagined a device he called the Memex. Conceived as a kind of analogue personal computer, it would allow users to store documents, build a personal <a class="link" data-target="index" data-from="memex">index</a>, navigate between them, and create trails linking one part of a document to another. These associative paths mimicked the way the human mind works, jumping freely between related ideas. What made Bush's vision especially fascinating was his idea of a new profession: the trailblazer, someone whose job would be to craft and curate meaningful links between documents. The concept anticipated hypertext by decades. Like Ted Nelson's <a class="link" data-target="xanadu" data-from="memex">Xanadu</a>, the Memex resembles the web we know today, yet both visions imagined something richer and more intentional. Bush had the idea for the <a class="link" data-target="tools" data-from="memex">tools</a>. The technology simply wasn't there yet.</p>`
+        html: `<p>In 1939, long before personal computers or the web existed, Vannevar Bush<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ea/Vannevar_Bush_portrait.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> imagined a device he called the Memex. Conceived as a kind of analogue personal computer, it would allow users to store documents, build a personal <a class="link" data-target="index" data-from="memex">index</a>, navigate between them, and create trails linking one part of a document to another. These associative paths mimicked the way the human mind works, jumping freely between related ideas. What made Bush's vision especially fascinating was his idea of a new profession: the trailblazer, someone whose job would be to craft and curate meaningful links between documents. The concept anticipated hypertext by decades. Like Ted Nelson's <a class="link" data-target="xanadu" data-from="memex">Xanadu</a>, the Memex resembles the web we know today, yet both visions imagined something richer and more intentional. Bush had the idea for the <a class="link" data-target="tools" data-from="memex">tools</a>. The technology simply wasn't there yet.</p>`
       },
 
       'network-effect': {
         type: 'text',
-        html: `<p>The network effect describes a phenomenon in which a technology becomes more valuable as more people use it. The telephone<span class="peek-img" data-img="images/candlestick-phone.jpg" data-cap="An early candlestick telephone. Nuberger13 / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> is the classic example: each new user makes the network more valuable for everyone already on it. Social media works the same way: more users mean more connections and content, creating a self-reinforcing loop: more users → more value → even more users.</p>
+        html: `<p>The network effect describes a phenomenon in which a technology becomes more valuable as more people use it. The telephone<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Candlestick_phone.JPG/960px-Candlestick_phone.JPG" data-cap="An early candlestick telephone. Nuberger13 / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> is the classic example: each new user makes the network more valuable for everyone already on it. Social media works the same way: more users mean more connections and content, creating a self-reinforcing loop: more users → more value → even more users.</p>
 <p>This is also why social media tends toward monopoly: once a platform reaches critical mass, leaving means losing your entire social graph, making competitors nearly impossible to displace.</p>
 <p>Decentralized platforms like the <a class="link" data-target="fediverse" data-from="network-effect">Fediverse</a> apply this differently. Instead of locking users into one platform, they share users and content across interconnected platforms via open protocols, letting the network effect benefit the whole ecosystem. This gives decentralized platforms a structural advantage, explored in <a class="link" data-target="why-the-network-effect-can-favor-the-fediverse" data-from="network-effect">Why the network effect can favor the Fediverse</a>.</p>`
       },
@@ -1640,13 +1198,13 @@
 
       'open-data': {
         type: 'text',
-        html: `<p>Open data is data that anyone can freely access, use, and share, without restrictions from copyright, patents, or control.<a class="peek-res" href="https://opendatahandbook.org/guide/en/what-is-open-data/" target="_blank" rel="noopener noreferrer" data-label="Open Data Handbook. &quot;What Is Open Data?&quot; Open Knowledge Foundation.">[↗]</a> When <a class="link" data-target="tim-berners-lee" data-from="open-data">Tim Berners-Lee</a> designed the Web, open data was at the core. As early as <a class="link" data-target="tim-berners-lees-proposal" data-from="open-data">Tim Berners-Lee's Proposal</a> in 1989, the core principle was that information should flow freely. When he released the Web in 1993 without patents or fees, that became real — the <a class="link" data-target="web-as-a-common" data-from="open-data">Web as a Common</a>, belonging to no single company or government.</p>
+        html: `<p>Open data is data that anyone can freely access, use, and share, without restrictions from copyright, patents, or control.<a class="peek-res" href="https://opendatahandbook.org/guide/en/what-is-open-data/" target="_blank" rel="noopener" data-label="Open Data Handbook. &quot;What Is Open Data?&quot; Open Knowledge Foundation.">[↗]</a> When <a class="link" data-target="tim-berners-lee" data-from="open-data">Tim Berners-Lee</a> designed the Web, open data was at the core. As early as <a class="link" data-target="tim-berners-lees-proposal" data-from="open-data">Tim Berners-Lee's Proposal</a> in 1989, the core principle was that information should flow freely. When he released the Web in 1993 without patents or fees, that became real — the <a class="link" data-target="web-as-a-common" data-from="open-data">Web as a Common</a>, belonging to no single company or government.</p>
 <p>Closed data creates gatekeepers: whoever controls access controls who can read, build on, or challenge information. Open data removes that gatekeeper. It is what allows researchers, journalists, and developers to work across sources, and it is what makes <a class="link" data-target="knowledge-linking" data-from="open-data">knowledge-linking</a> possible. You can only link to knowledge that is openly reachable.</p>`
       },
 
       'pagerank': {
         type: 'text',
-        html: `<p>In 1996, Stanford students Larry Page<span class="peek-img" data-img="images/larry-page-in-the-european-parliament-17-06-2009.jpg" data-cap="Larry Page, European Parliament 2009. Stansfield PL / Wikimedia Commons, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Sergey Brin<span class="peek-img" data-img="images/sergey-brin.jpg" data-cap="Sergey Brin, 2005. Allen Lew / Wikimedia, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed an algorithm that would change how we navigate the web and, later, change the web entirely. What they developed was PageRank<span class="peek-note" data-kind="definition">[?]<template class="peek-body">Google's original ranking algorithm — it scores a page by the number and quality of other pages linking to it, treating each link as a vote.</template></span>, the algorithm that led to and is used by Google. There were different search engines before, like Yahoo, that used a manually maintained <a class="link" data-target="index" data-from="pagerank">index</a> of websites to search later.<a class="peek-res" href="https://thedigitalmaze.com/blog/the-story-of-search-engines-the-past-the-present-and-the-future/" target="_blank" rel="noopener noreferrer" data-label="The Digital Maze. &quot;The Story of Search Engines: The Past, the Present, and the Future.&quot;">[↗]</a> PageRank used an automatic approach, ranking websites based on how often they are linked to — a method already invented by Eugene Garfield<span class="peek-img" data-img="images/eugene-garfield-hd2007-richard-j-bolte-sr-award-tif.jpg" data-cap="Eugene Garfield, pioneer of citation indexing, 2007. Chemical Heritage Foundation / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> (called “SCI,” short for “Science Citation <a class="link" data-target="index" data-from="pagerank">index</a>”).<a class="peek-res" href="https://www.youtube.com/watch?v=72nfrhXroo8" target="_blank" rel="noopener noreferrer" data-label="Wright, Alex. &quot;The Web That Wasn't.&quot; Google Tech Talk, YouTube.">[↗]</a> Instead of citations, PageRank used hyperlinks to determine how important a website is. And unlike Yahoo, this method used <a class="link" data-target="non-hierarchical-linking" data-from="pagerank">non-hierarchical linking</a> as the basis. This worked really, really well. In fact, it worked so well that, by the early 2000s, Google had become the dominant search engine. But it didn't stop there. Google became one of the largest companies in the world. And with that power came new pressure on the web. What followed was an <a class="link" data-target="adaptation-to-the-algorithm" data-from="pagerank">Adaptation to the algorithm</a>: websites restructuring themselves not for readers, but for Google's PageRank.</p>`
+        html: `<p>In 1996, Stanford students Larry Page<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ec/Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped%29.jpg" data-cap="Larry Page, European Parliament 2009. Stansfield PL / Wikimedia Commons, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Sergey Brin<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/3/38/Sergey_Brin.JPG" data-cap="Sergey Brin, 2005. Allen Lew / Wikimedia, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed an algorithm that would change how we navigate the web and, later, change the web entirely. What they developed was PageRank<span class="peek-note" data-kind="definition">[?]<template class="peek-body">Google's original ranking algorithm — it scores a page by the number and quality of other pages linking to it, treating each link as a vote.</template></span>, the algorithm that led to and is used by Google. There were different search engines before, like Yahoo, that used a manually maintained <a class="link" data-target="index" data-from="pagerank">index</a> of websites to search later.<a class="peek-res" href="https://thedigitalmaze.com/blog/the-story-of-search-engines-the-past-the-present-and-the-future/" target="_blank" rel="noopener" data-label="The Digital Maze. &quot;The Story of Search Engines: The Past, the Present, and the Future.&quot;">[↗]</a> PageRank used an automatic approach, ranking websites based on how often they are linked to — a method already invented by Eugene Garfield<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF/lossy-page1-500px-Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF.jpg" data-cap="Eugene Garfield, pioneer of citation indexing, 2007. Chemical Heritage Foundation / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> (called “SCI,” short for “Science Citation <a class="link" data-target="index" data-from="pagerank">index</a>”).<a class="peek-res" href="https://www.youtube.com/watch?v=72nfrhXroo8" target="_blank" rel="noopener" data-label="Wright, Alex. &quot;The Web That Wasn't.&quot; Google Tech Talk, YouTube.">[↗]</a> Instead of citations, PageRank used hyperlinks to determine how important a website is. And unlike Yahoo, this method used <a class="link" data-target="non-hierarchical-linking" data-from="pagerank">non-hierarchical linking</a> as the basis. This worked really, really well. In fact, it worked so well that, by the early 2000s, Google had become the dominant search engine. But it didn't stop there. Google became one of the largest companies in the world. And with that power came new pressure on the web. What followed was an <a class="link" data-target="adaptation-to-the-algorithm" data-from="pagerank">Adaptation to the algorithm</a>: websites restructuring themselves not for readers, but for Google's PageRank.</p>`
       },
 
       'preserving-the-web': {
@@ -1656,7 +1214,7 @@
 
       'protocols': {
         type: 'text',
-        html: `<p>A protocol is a set of agreed-upon rules that govern how computers or systems communicate. Protocols are important because standardized processes reduce conflicts and inefficiencies, enable communication across systems with different hardware and software, and ensure security and reliability through built-in measures.<a class="peek-res" href="https://www.fastly.com/learning/cdn/what-is-a-protocol" target="_blank" rel="noopener noreferrer" data-label="Fastly. &quot;What Is a Protocol?&quot;">[↗]</a> Open protocols are publicly documented and not controlled by any single company. An example of open protocols is email, which uses three open protocols: SMTP, POP3, and IMAP.<a class="peek-res" href="https://www.siteground.com/tutorials/email/protocols-pop3-smtp-imap/" target="_blank" rel="noopener noreferrer" data-label="SiteGround. &quot;Email Protocols: POP3, SMTP, IMAP.&quot;">[↗]</a> The use of these shared protocols makes it possible to send emails to any address. Open protocols are at the core of the World Wide Web, with the W3C (World Wide Web Consortium), founded by World Wide Web creator <a class="link" data-target="tim-berners-lee" data-from="protocols">Tim Berners-Lee</a>, creating web standards for everyone to use.<a class="peek-res" href="https://www.w3.org/standards/" target="_blank" rel="noopener noreferrer" data-label="W3C. &quot;Web Standards.&quot; World Wide Web Consortium.">[↗]</a></p>`
+        html: `<p>A protocol is a set of agreed-upon rules that govern how computers or systems communicate. Protocols are important because standardized processes reduce conflicts and inefficiencies, enable communication across systems with different hardware and software, and ensure security and reliability through built-in measures.<a class="peek-res" href="https://www.fastly.com/learning/cdn/what-is-a-protocol" target="_blank" rel="noopener" data-label="Fastly. &quot;What Is a Protocol?&quot;">[↗]</a> Open protocols are publicly documented and not controlled by any single company. An example of open protocols is email, which uses three open protocols: SMTP, POP3, and IMAP.<a class="peek-res" href="https://www.siteground.com/tutorials/email/protocols-pop3-smtp-imap/" target="_blank" rel="noopener" data-label="SiteGround. &quot;Email Protocols: POP3, SMTP, IMAP.&quot;">[↗]</a> The use of these shared protocols makes it possible to send emails to any address. Open protocols are at the core of the World Wide Web, with the W3C (World Wide Web Consortium), founded by World Wide Web creator <a class="link" data-target="tim-berners-lee" data-from="protocols">Tim Berners-Lee</a>, creating web standards for everyone to use.<a class="peek-res" href="https://www.w3.org/standards/" target="_blank" rel="noopener" data-label="W3C. &quot;Web Standards.&quot; World Wide Web Consortium.">[↗]</a></p>`
       },
 
       'start': {
@@ -1666,17 +1224,17 @@
 
       'the-visionaries-of-the-web': {
         type: 'text',
-        html: `<p>The saying “We stand on the shoulders of giants” holds especially true for the web as we know it today. Without the work of many individuals in information management, the internet would look completely different from what we know now. The web's fundamental ideas were shaped largely by Vannevar Bush<span class="peek-img" data-img="images/vannevar-bush.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>'s <a class="link" data-target="memex" data-from="the-visionaries-of-the-web">Memex</a><span class="peek-img" data-img="images/memex-at-das-netz-exhibition-of-deutsches-technikmuseum.jpg" data-cap="Memex model, Das Netz exhibition, Deutsches Technikmuseum. Bunyk / Wikimedia, CC BY 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, a device that functioned as an analog personal computer with hyperlinks. Douglas Engelbart<span class="peek-img" data-img="images/sri-douglas-engelbart-2008.jpg" data-cap="Douglas Engelbart with the first computer mouse prototype, 2008. SRI International / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> further developed the concept and is widely regarded as the forefather of the hyperlink. Even before the World Wide Web, there were similar visions — most notably <a class="link" data-target="xanadu" data-from="the-visionaries-of-the-web">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span> — which shared many features with the web but also proposed some fundamentally different ideas.</p>`
+        html: `<p>The saying “We stand on the shoulders of giants” holds especially true for the web as we know it today. Without the work of many individuals in information management, the internet would look completely different from what we know now. The web's fundamental ideas were shaped largely by Vannevar Bush<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ea/Vannevar_Bush_portrait.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>'s <a class="link" data-target="memex" data-from="the-visionaries-of-the-web">Memex</a><span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/fb/Memex_at_Das_Netz_exhibition_of_Deutsches_Technikmuseum.jpg" data-cap="Memex model, Das Netz exhibition, Deutsches Technikmuseum. Bunyk / Wikimedia, CC BY 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, a device that functioned as an analog personal computer with hyperlinks. Douglas Engelbart<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/f0/SRI_Douglas_Engelbart_2008.jpg" data-cap="Douglas Engelbart with the first computer mouse prototype, 2008. SRI International / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> further developed the concept and is widely regarded as the forefather of the hyperlink. Even before the World Wide Web, there were similar visions — most notably <a class="link" data-target="xanadu" data-from="the-visionaries-of-the-web">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span> — which shared many features with the web but also proposed some fundamentally different ideas.</p>`
       },
 
       'tim-berners-lee': {
         type: 'text',
-        html: `<p>Tim Berners-Lee<span class="peek-img" data-img="images/tim-berners-lee-cp.jpg" data-cap="Tim Berners-Lee at Campus Party Brasil, 2009. Silvio Tanaka / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> invented the World Wide Web. During his time as a programmer at CERN, he built the first browser, the first server<span class="peek-img" data-img="images/first-web-server.jpg" data-cap="The NeXT computer at CERN that ran the first web server. Coolcaesar / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, and the language every page still uses, <a class="link" data-target="html" data-from="tim-berners-lee">HTML</a>. From the beginning, he worked on the Web not only as a programmer but also as a thinker, applying information theory to make <a class="link" data-target="open-data" data-from="tim-berners-lee">open data</a> and <a class="link" data-target="decentralization" data-from="tim-berners-lee">decentralization</a> core principles of the Web. For this, he was inspired by the work of <a class="link" data-target="the-visionaries-of-the-web" data-from="tim-berners-lee">The visionaries of the Web</a>. The Web's core idea — a network that belongs to everyone, with no central gatekeeper — did not remain in the past. The same spirit drives the <a class="link" data-target="fediverse" data-from="tim-berners-lee">Fediverse</a> today, built on open, shared <a class="link" data-target="protocols" data-from="tim-berners-lee">protocols</a> instead of private gates.</p>`
+        html: `<p>Tim Berners-Lee<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/6/62/Tim_Berners-Lee_CP.jpg" data-cap="Tim Berners-Lee at Campus Party Brasil, 2009. Silvio Tanaka / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> invented the World Wide Web. During his time as a programmer at CERN, he built the first browser, the first server<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/First_Web_Server.jpg/960px-First_Web_Server.jpg" data-cap="The NeXT computer at CERN that ran the first web server. Coolcaesar / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, and the language every page still uses, <a class="link" data-target="html" data-from="tim-berners-lee">HTML</a>. From the beginning, he worked on the Web not only as a programmer but also as a thinker, applying information theory to make <a class="link" data-target="open-data" data-from="tim-berners-lee">open data</a> and <a class="link" data-target="decentralization" data-from="tim-berners-lee">decentralization</a> core principles of the Web. For this, he was inspired by the work of <a class="link" data-target="the-visionaries-of-the-web" data-from="tim-berners-lee">The visionaries of the Web</a>. The Web's core idea — a network that belongs to everyone, with no central gatekeeper — did not remain in the past. The same spirit drives the <a class="link" data-target="fediverse" data-from="tim-berners-lee">Fediverse</a> today, built on open, shared <a class="link" data-target="protocols" data-from="tim-berners-lee">protocols</a> instead of private gates.</p>`
       },
 
       'tim-berners-lees-proposal': {
         type: 'text',
-        html: `<p>In his 1989 proposal, “Information Management: A Proposal,” written during his time at CERN, Tim Berners-Lee<span class="peek-img" data-img="images/tim-berners-lee-cp.jpg" data-cap="Tim Berners-Lee at Campus Party Brasil, 2009. Silvio Tanaka / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed the idea that would later become the World-Wide Web, or “Web” for short. He describes his proposal as follows: “Firstly, it discusses the problem of information access at CERN. Then, it introduces the idea of linked information systems and compares them with less flexible ways of finding information.”</p>
+        html: `<p>In his 1989 proposal, “Information Management: A Proposal,” written during his time at CERN, Tim Berners-Lee<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/6/62/Tim_Berners-Lee_CP.jpg" data-cap="Tim Berners-Lee at Campus Party Brasil, 2009. Silvio Tanaka / Wikimedia, CC BY 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed the idea that would later become the World-Wide Web, or “Web” for short. He describes his proposal as follows: “Firstly, it discusses the problem of information access at CERN. Then, it introduces the idea of linked information systems and compares them with less flexible ways of finding information.”</p>
 <p>At the center of the proposal — and thus the Web — has always been hypertext<span class="peek-note" data-kind="definition">[?]<template class="peek-body">non-linear text where words or phrases link to other documents — the foundation of the web</template></span>, which made it possible to connect parts of a document and create links within it using hyperlinks. The history of the hyperlink includes many ideas and was shaped by many people until it finally led to the development of the Web through Tim Berners-Lee.</p>
 <p>Already visible in the proposal is the idea of <a class="link" data-target="non-hierarchical-linking" data-from="tim-berners-lees-proposal">non-hierarchical linking</a>: the principle that any document can connect to any other, with no fixed order. This is especially interesting because it shows how his idea was not just about sharing information but also about how hyperlinks can serve as a way to think and research.</p>`
       },
@@ -1709,13 +1267,13 @@
 
       'wikipedia': {
         type: 'text',
-        html: `<p>From Wikipedia: “Wikipedia is a free online encyclopedia written and maintained by a community of volunteers, known as Wikipedians, through open collaboration and the wiki software MediaWiki. Founded by Jimmy Wales<span class="peek-img" data-img="images/jimmy-wales-in-new-york-city-march-2023.jpg" data-cap="Jimmy Wales, co-founder of Wikipedia, 2023. ZMcCune / Wikimedia, CC BY-SA 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Larry Sanger<span class="peek-img" data-img="images/larry-sanger.jpg" data-cap="Larry Sanger, co-founder of Wikipedia. Larry Sanger / Wikimedia, CC BY-SA 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 2001, Wikipedia has been hosted since 2003 by the Wikimedia Foundation, an American nonprofit organization funded mainly by donations from readers. Wikipedia is the largest and most read reference work in history.”<a class="peek-res" href="https://en.wikipedia.org/wiki/Wikipedia" target="_blank" rel="noopener noreferrer" data-label="Wikipedia. &quot;Wikipedia.&quot; Wikimedia Foundation.">[↗]</a></p>
+        html: `<p>From Wikipedia: “Wikipedia is a free online encyclopedia written and maintained by a community of volunteers, known as Wikipedians, through open collaboration and the wiki software MediaWiki. Founded by Jimmy Wales<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Jimmy_Wales_in_New_York_City_March_2023_%28cropped%29.jpg/960px-Jimmy_Wales_in_New_York_City_March_2023_%28cropped%29.jpg" data-cap="Jimmy Wales, co-founder of Wikipedia, 2023. ZMcCune / Wikimedia, CC BY-SA 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Larry Sanger<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/6/6f/Larry-Sanger-headshot-768x1024.jpg" data-cap="Larry Sanger, co-founder of Wikipedia. Larry Sanger / Wikimedia, CC BY-SA 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> in 2001, Wikipedia has been hosted since 2003 by the Wikimedia Foundation, an American nonprofit organization funded mainly by donations from readers. Wikipedia is the largest and most read reference work in history.”<a class="peek-res" href="https://en.wikipedia.org/wiki/Wikipedia" target="_blank" rel="noopener" data-label="Wikipedia. &quot;Wikipedia.&quot; Wikimedia Foundation.">[↗]</a></p>
 <p>Because of its vast number of entries and everyday use, Wikipedia can be used to research information connections and <a class="link" data-target="knowledge-linking" data-from="wikipedia">knowledge-linking</a>. An example is <a class="link" data-target="all-roads-lead-to-philosophy" data-from="wikipedia">all roads lead to philosophy</a>, a phenomenon that shows how various articles connect to philosophy. In <a class="link" data-target="i-made-a-graph-to-wikipedia" data-from="wikipedia">I Made A Graph to Wikipedia</a>, the connections between entries are mapped, highlighting different groups of articles — so-called “communities” — and their relationships. This can tell us not just about Wikipedia but also about real-world connections among people, countries, politics, sports, and more.</p>`
       },
 
       'xanadu': {
         type: 'text',
-        html: `<p>Before <a class="link" data-target="tim-berners-lees-proposal" data-from="xanadu">Tim Berners-Lee's Proposal</a> in 1989 at CERN, another vision for hypertext already existed. In the 1960s, computer pioneer Ted Nelson<span class="peek-img" data-img="images/ted-nelson.jpg" data-cap="Ted Nelson, who coined the term hypertext. Dgies / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> began developing Project Xanadu, a system where every document could link to any other, and the links would go both ways. In <a class="link" data-target="html" data-from="xanadu">HTML</a>, a hyperlink is one-directional: the source points to a target, but the target has no idea it is being linked to. This asymmetry is the root cause of <a class="link" data-target="link-rot" data-from="xanadu">link rot</a>: if the target moves or disappears, the link simply breaks, with nothing to warn either side. In Xanadu, every link would be a live, two-way connection; a document could never silently vanish and leave dead ends behind. <a class="link" data-target="tim-berners-lees-proposal" data-from="xanadu">Berners-Lee's proposal</a> chose simplicity instead, and bidirectional links were left out. Xanadu was never fully realized.<a class="peek-res" href="https://www.youtube.com/watch?v=En_2T7KH6RA" target="_blank" rel="noopener noreferrer" data-label="Nelson, Ted. Xanadu demo, YouTube.">[↗]</a><a class="peek-res" href="https://www.youtube.com/watch?v=8JOD1AQGqEg" target="_blank" rel="noopener noreferrer" data-label="&quot;Project Xanadu.&quot; YouTube.">[↗]</a></p>`
+        html: `<p>Before <a class="link" data-target="tim-berners-lees-proposal" data-from="xanadu">Tim Berners-Lee's Proposal</a> in 1989 at CERN, another vision for hypertext already existed. In the 1960s, computer pioneer Ted Nelson<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Ted_Nelson_cropped.jpg/960px-Ted_Nelson_cropped.jpg" data-cap="Ted Nelson, who coined the term hypertext. Dgies / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> began developing Project Xanadu, a system where every document could link to any other, and the links would go both ways. In <a class="link" data-target="html" data-from="xanadu">HTML</a>, a hyperlink is one-directional: the source points to a target, but the target has no idea it is being linked to. This asymmetry is the root cause of <a class="link" data-target="link-rot" data-from="xanadu">link rot</a>: if the target moves or disappears, the link simply breaks, with nothing to warn either side. In Xanadu, every link would be a live, two-way connection; a document could never silently vanish and leave dead ends behind. <a class="link" data-target="tim-berners-lees-proposal" data-from="xanadu">Berners-Lee's proposal</a> chose simplicity instead, and bidirectional links were left out. Xanadu was never fully realized.<a class="peek-res" href="https://www.youtube.com/watch?v=En_2T7KH6RA" target="_blank" rel="noopener" data-label="Nelson, Ted. Xanadu demo, YouTube.">[↗]</a><a class="peek-res" href="https://www.youtube.com/watch?v=8JOD1AQGqEg" target="_blank" rel="noopener" data-label="&quot;Project Xanadu.&quot; YouTube.">[↗]</a></p>`
       },
 
       'all-roads-lead-to-philosophy': {
@@ -1774,7 +1332,7 @@
         src: 'https://hoder.com/en/posts/4',
         allow: '',
         notes: [
-          `Blogger, journalist, and researcher Hossein Derakhshan<span class="peek-img" data-img="images/re-publica-faces-2019-32858498157.jpg" data-cap="Hossein Derakhshan at re:publica, 2019. Dominik Butzmann / re:publica, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> writes about his experience using social media for the first time after being a blogger in the 2000s and being in jail for seven years. He writes about the freedom of the early internet and blogging culture. In doing so, he uses hyperlinks, among other things, as a way of <a class="link" data-target="non-hierarchical-linking" data-from="the-web-we-have-to-save">non-hierarchical linking</a> and an experience of <a class="link" data-target="decentralization" data-from="the-web-we-have-to-save">decentralization</a>. He writes about how free and personal the experience of reading and sharing his own blog was. In doing so, he argues against social media due to its strict format and constraints.`
+          `Blogger, journalist, and researcher Hossein Derakhshan<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Re_publica_faces_2019_%2832858498157%29.jpg/960px-Re_publica_faces_2019_%2832858498157%29.jpg" data-cap="Hossein Derakhshan at re:publica, 2019. Dominik Butzmann / re:publica, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> writes about his experience using social media for the first time after being a blogger in the 2000s and being in jail for seven years. He writes about the freedom of the early internet and blogging culture. In doing so, he uses hyperlinks, among other things, as a way of <a class="link" data-target="non-hierarchical-linking" data-from="the-web-we-have-to-save">non-hierarchical linking</a> and an experience of <a class="link" data-target="decentralization" data-from="the-web-we-have-to-save">decentralization</a>. He writes about how free and personal the experience of reading and sharing his own blog was. In doing so, he argues against social media due to its strict format and constraints.`
         ]
       }
     };
@@ -1804,6 +1362,8 @@
     const POP_DURATION = 450;   // ms of the grow-and-back
     const POP_PARTICLE_GAP = 35;    // px of border per emitted particle (smaller = more)
     const POP_FRICTION = 0.8;   // per-frame velocity decay of the particles
+
+    const ROT_CHANCE = 0.35;       // probability an inbound link rots when its target dies
 
     const RADIUS = 100;          // hover lens radius in CSS px
 
@@ -1888,7 +1448,10 @@
        ============================================================ */
 
     // Remove a fragment immediately and completely (DOM + state).
-    function removeFragment(id) {
+    // When `rot` is set (the fragment is dying, not just being re-spawned),
+    // each live link still pointing at it has a chance to rot — link rot,
+    // per-link: other links to the same target keep working.
+    function removeFragment(id, { rot = false } = {}) {
       const el = document.getElementById(id);
       if (el) el.remove();
       if (fxCanvases[id]) { fxCanvases[id].remove(); delete fxCanvases[id]; }
@@ -1900,6 +1463,26 @@
 
       // This fragment is gone — clear the presence dot on links pointing at it.
       document.querySelectorAll(`a.link[data-target="${id}"]`).forEach(a => a.classList.remove('on-canvas'));
+
+      if (rot) {
+        document.querySelectorAll(`a.link[data-target="${id}"]`).forEach(link => {
+          if (!link.classList.contains('dead') && Math.random() < ROT_CHANCE) {
+            link.classList.add('dead');
+            link.dataset.dead = '1';
+          }
+        });
+      }
+    }
+
+    // "404 — not found" toast near the cursor when a dead link is clicked.
+    function show404(x, y) {
+      const t = document.createElement('div');
+      t.className = 'toast404';
+      t.textContent = '404 — not found';
+      t.style.left = (x + 10) + 'px';
+      t.style.top = (y - 8) + 'px';
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 900);
     }
 
     /* ============================================================
@@ -1928,7 +1511,7 @@
 
       timers[id] = setTimeout(() => {
         const el = document.getElementById(id);
-        if (!el) { timers[id] = setTimeout(() => removeFragment(id), FADE_DURATION); return; }
+        if (!el) { timers[id] = setTimeout(() => removeFragment(id, { rot: true }), FADE_DURATION); return; }
 
         el.style.transform = '';         // drop any cursor lean so the overlay lines up
         followState.delete(el);
@@ -1959,7 +1542,7 @@
           })
           .catch(() => cssFade(el, id));           // tainted canvas etc. -> CSS fallback
 
-        setTimeout(() => removeFragment(id), FADE_DURATION);
+        setTimeout(() => removeFragment(id, { rot: true }), FADE_DURATION);
       }, FADE_DELAY);
     }
 
@@ -2181,17 +1764,11 @@
       } else if (frag.type === 'video') {
         media = `<video class="media" src="${frag.src}"${frag.poster ? ` poster="${frag.poster}"` : ''} controls preload="metadata"></video>`;
       } else if (frag.type === 'iframe') {
-        // GDPR click-to-load: third-party embeds (YouTube) are NOT loaded until
-        // the visitor explicitly consents. We render a placeholder carrying the
-        // embed params; buildEmbed() swaps in the real iframe on click, so no
-        // request reaches Google before consent (Art. 6(1)(a)).
-        const title = frag.title || 'Interactive iframe embed';
-        media = `<div class="media-wrap embed-consent" data-embed-src="${frag.src}" data-embed-title="${title}" data-embed-allow="${frag.allow || ''}">`
-          + `<div class="embed-consent-inner">`
-          + `<p class="embed-consent-title">${title}</p>`
-          + `<p class="embed-consent-text">This is a YouTube video. Loading it connects to YouTube (Google Ireland Ltd. / Google LLC, USA) and transmits your IP address and device data to Google. See the privacy notice in “legals”.</p>`
-          + `<button type="button" class="embed-load">▶ Load video</button>`
-          + `</div></div>`;
+        const allow = frag.allow ? ` allow="${frag.allow}"` : '';
+        // Iframes swallow mouse events, so the cursor-drag never reaches the page.
+        // A transparent shield over the embed catches hover (enabling the drag) and
+        // steps aside on click so the embed stays usable.
+        media = `<div class="media-wrap"><iframe class="media" title="${frag.title || 'Interactive iframe embed'}" src="${frag.src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"${allow}></iframe><div class="iframe-shield" title="click to use · drag to move"></div></div>`;
       }
       return media + notesMarkup(frag.notes);
     }
@@ -2211,17 +1788,15 @@
         div.innerHTML = `<h2 class="fragment-caption">${frag.title || id}</h2>` + mediaMarkup(frag);
       }
 
-      // Mark this fragment's own links. If the target doesn't exist, demote the
-      // link to plain text (drop the `link` class, leave no href) so it reads like
-      // body text and the delegated click handler ignores it. Otherwise href="#"
-      // makes it keyboard-focusable and announced as a link by screen readers
-      // (preventDefault() in the click handler stops the hash jump), and a presence
-      // dot is added if the target is already on the canvas.
+      // Mark this fragment's own links: greyish blue if the target doesn't exist
+      // yet, presence dot if the target is already on the canvas.
+      // href="#" makes the link keyboard-focusable and announced as a link by
+      // screen readers; preventDefault() in the click handler stops the hash jump.
       div.querySelectorAll('a.link').forEach(a => {
-        const t = a.dataset.target;
-        if (!FRAGMENTS[t]) { a.classList.remove('link'); return; }
         a.href = '#';
-        if (document.getElementById(t)) a.classList.add('on-canvas');
+        const t = a.dataset.target;
+        if (!FRAGMENTS[t]) a.classList.add('unwritten');
+        else if (document.getElementById(t)) a.classList.add('on-canvas');
       });
       // Mark every link anywhere that points at this newly-placed fragment.
       document.querySelectorAll(`a.link[data-target="${id}"]`).forEach(a => a.classList.add('on-canvas'));
@@ -2263,7 +1838,7 @@
       // Look for a free position; if space runs out, clear the oldest fragment(s).
       let pos = findPosition(w, h);
       while (!pos && order.length) {
-        removeFragment(order[0]);
+        removeFragment(order[0], { rot: true });
         pos = findPosition(w, h);
       }
       if (!pos) pos = { x: PAD, y: PAD };   // emergency: empty canvas, show anyway
@@ -2331,11 +1906,23 @@
        9. LINK INTERACTION (delegated click handler)
        ============================================================ */
     document.addEventListener('click', e => {
-      if (IS_MOBILE) return;                 // mobile handles link taps in initMobile()
       // Clicks may land on a .word span inside the link, hence closest().
       const link = e.target.closest('.link');
       if (!link) return;
       e.preventDefault();
+
+      if (link.classList.contains('dead')) {
+        // The connection simply stops working.
+        show404(e.clientX, e.clientY);
+        return;
+      }
+
+      // Dangling link: the target fragment hasn't been written yet. Behave like a
+      // dead link (404) rather than crashing — it comes alive once the fragment exists.
+      if (!FRAGMENTS[link.dataset.target]) {
+        show404(e.clientX, e.clientY);
+        return;
+      }
 
       link.classList.add('visited');
       followedEdges.add(link.dataset.from + '>' + link.dataset.target);   // record the journey
@@ -2353,25 +1940,6 @@
       const down = document.querySelector('.iframe-shield.down');
       if (down) down.classList.remove('down');
     }, true);
-
-    // GDPR click-to-load: build the real third-party iframe only after the
-    // visitor clicks "Load video" in a consent placeholder. No request reaches
-    // the embed host (YouTube/Google) until this runs. referrerpolicy is
-    // tightened to strict-origin so only this site's origin (not the full URL)
-    // is sent cross-origin.
-    function buildEmbed(wrap) {
-      const src = wrap.dataset.embedSrc;
-      const title = wrap.dataset.embedTitle || 'Interactive iframe embed';
-      const allow = wrap.dataset.embedAllow ? ` allow="${wrap.dataset.embedAllow}"` : '';
-      wrap.classList.remove('embed-consent');
-      wrap.innerHTML = `<iframe class="media" title="${title}" src="${src}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"${allow}></iframe><div class="iframe-shield" title="click to use · drag to move"></div>`;
-    }
-    document.addEventListener('click', e => {
-      const load = e.target.closest('.embed-load');
-      if (!load) return;
-      const wrap = load.closest('.media-wrap');
-      if (wrap) buildEmbed(wrap);
-    });
 
     /* ============================================================
        10. HOVER MATERIAL SHIFT
@@ -3144,7 +2712,6 @@
     }
 
     document.addEventListener('pointerover', e => {
-      if (IS_MOBILE) return;                 // mobile uses tap → lightbox / inline note
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger || trigger === peekTrigger) return;
       // ignore moving between inner .word spans of the same trigger
@@ -3159,7 +2726,6 @@
       }, PEEK_DELAY);
     }, { passive: true });
     document.addEventListener('pointerout', e => {
-      if (IS_MOBILE) return;
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger || trigger !== peekTrigger && !peekTimer) return;
       if (trigger && trigger.contains(e.relatedTarget)) return;   // still inside
@@ -3169,7 +2735,6 @@
     // Keyboard accessibility: open peeks on focus, close on blur — mirrors the
     // pointer handlers above so Tab / Shift-Tab works for screen readers.
     document.addEventListener('focusin', e => {
-      if (IS_MOBILE) return;
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger || trigger === peekTrigger) return;
       clearTimeout(peekTimer);
@@ -3182,7 +2747,6 @@
       }, PEEK_DELAY);
     });
     document.addEventListener('focusout', e => {
-      if (IS_MOBILE) return;
       const trigger = e.target.closest('.peek-img, .peek-res, .peek-note');
       if (!trigger) return;
       // Don't close if focus moved to something still inside the same trigger.
@@ -3521,282 +3085,7 @@
       }
     }
 
-    /* ============================================================
-       MOBILE (≤768px) — vertical feed engine. Reuses FRAGMENTS,
-       mediaMarkup(), markVisited(), openModal(); builds its own UI.
-       Never runs on desktop. The desktop interaction handlers above
-       are no-ops on mobile (guarded by IS_MOBILE).
-       ============================================================ */
-    function initMobile() {
-      const feedStack = [];
-
-      // --- Chrome: sticky top bar + menu ---
-      const topbar = document.createElement('header');
-      topbar.className = 'm-topbar';
-      const titleBtn = document.createElement('button');
-      titleBtn.type = 'button';
-      titleBtn.className = 'm-title';
-      titleBtn.textContent = 'Hyperlinks';
-      titleBtn.setAttribute('aria-label', 'Scroll to top');
-      titleBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-      const menuWrap = document.createElement('div');
-      menuWrap.style.position = 'relative';
-      const menuBtn = document.createElement('button');
-      menuBtn.type = 'button';
-      menuBtn.className = 'm-menu-btn';
-      menuBtn.textContent = '≡';
-      menuBtn.setAttribute('aria-label', 'Menu');
-      const menu = document.createElement('div');
-      menu.className = 'm-menu';
-      menu.setAttribute('role', 'menu');
-      const closeMenu = () => menu.classList.remove('open');
-      const addMenuItem = (label, fn) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = label;
-        b.addEventListener('click', () => { closeMenu(); fn(); });
-        menu.appendChild(b);
-      };
-      addMenuItem('Documentation', () => openModal(document.getElementById('doc-overlay')));
-      addMenuItem('Legal · privacy', () => openModal(document.getElementById('legal-overlay')));
-      addMenuItem('Your path', () => openPath());
-      menuBtn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('open'); });
-      document.addEventListener('click', e => { if (!menuWrap.contains(e.target)) closeMenu(); });
-      menuWrap.append(menuBtn, menu);
-      topbar.append(titleBtn, menuWrap);
-
-      // --- Feed container ---
-      const feed = document.createElement('main');
-      feed.className = 'm-feed';
-      feed.id = 'm-feed';
-      feed.setAttribute('role', 'main');
-
-      // --- Floating back control ---
-      const backBtn = document.createElement('button');
-      backBtn.type = 'button';
-      backBtn.className = 'm-back';
-      backBtn.textContent = '← back';
-      backBtn.hidden = true;
-      backBtn.addEventListener('click', () => history.back());
-
-      // --- Full-screen image lightbox ---
-      const lightbox = document.createElement('div');
-      lightbox.className = 'm-lightbox';
-      lightbox.setAttribute('aria-hidden', 'true');
-      lightbox.innerHTML = '<button class="m-close" type="button" aria-label="Close image">×</button><img alt=""><div class="m-cap"></div>';
-      const lbImg = lightbox.querySelector('img');
-      const lbCap = lightbox.querySelector('.m-cap');
-      const closeLightbox = () => {
-        lightbox.classList.remove('open');
-        lightbox.setAttribute('aria-hidden', 'true');
-        lbImg.removeAttribute('src');
-      };
-      lightbox.addEventListener('click', e => {
-        if (e.target === lightbox || e.target.classList.contains('m-close')) closeLightbox();
-      });
-      document.addEventListener('keydown', e => { if (e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox(); });
-
-      // --- "Your path" overlay (reuses the .doc-overlay modal system) ---
-      const pathOverlay = document.createElement('div');
-      pathOverlay.className = 'doc-overlay';
-      pathOverlay.id = 'm-path-overlay';
-      pathOverlay.setAttribute('aria-hidden', 'true');
-      pathOverlay.innerHTML = '<div class="doc-modal" role="dialog" aria-modal="true" aria-label="Your path"><button class="doc-close" aria-label="Close your path">×</button><div class="doc-content"><h2>your path</h2><ol class="m-path-list" style="padding-left:1.2em;line-height:1.9"></ol></div></div>';
-      pathOverlay.querySelector('.doc-close').addEventListener('click', () => closeModal(pathOverlay));
-      pathOverlay.addEventListener('click', e => { if (e.target === pathOverlay) closeModal(pathOverlay); });
-      const pathList = pathOverlay.querySelector('.m-path-list');
-      function openPath() {
-        pathList.innerHTML = '';
-        feedStack.forEach(id => {
-          const li = document.createElement('li');
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'm-title';
-          b.style.cssText = 'font-size:16px;text-align:left';
-          const f = FRAGMENTS[id];
-          b.textContent = f && f.type !== 'text' && f.title ? f.title : id;
-          b.addEventListener('click', () => { closeModal(pathOverlay); scrollToCard(id); });
-          li.appendChild(b);
-          pathList.appendChild(li);
-        });
-        openModal(pathOverlay);
-      }
-
-      document.body.append(topbar, feed, backBtn, lightbox, pathOverlay);
-
-      // --- Card building ---
-      function buildCard(id) {
-        const frag = FRAGMENTS[id];
-        markVisited(id);
-        const card = document.createElement('article');
-        card.className = 'm-card';
-        card.id = 'm-' + id;
-        card.dataset.fragId = id;
-        const caption = frag.type === 'text' ? id : (frag.title || id);
-        card.innerHTML = `<h2 class="m-caption">${caption}</h2>` +
-          (frag.type === 'text' ? frag.html : mediaMarkup(frag));
-        // Demote dead links to plain text; give live links a focus target.
-        card.querySelectorAll('a.link').forEach(a => {
-          const t = a.dataset.target;
-          if (!FRAGMENTS[t]) { a.classList.remove('link'); a.removeAttribute('href'); return; }
-          a.setAttribute('href', '#');
-        });
-        // Accessible definition triggers.
-        card.querySelectorAll('.peek-note').forEach(el => {
-          el.setAttribute('tabindex', '0'); el.setAttribute('role', 'button');
-        });
-        // Mobile has no hover, so the desktop "tap a tiny marker to peek" is
-        // invisible. Render each peek image inline as a visible figure (tap to
-        // enlarge in the lightbox), replacing the tiny inline marker.
-        const makeFigure = (src, cap) => {
-          const fig = document.createElement('figure');
-          fig.className = 'm-figure';
-          const img = document.createElement('img');
-          img.alt = cap || '';
-          img.dataset.img = src;          // full path; lightbox/onerror use it
-          img.dataset.cap = cap || '';
-          img.onerror = () => { img.onerror = null; img.src = src; };  // fall back to full image
-          img.src = mobileImg(src);
-          fig.appendChild(img);
-          if (cap) {
-            const fc = document.createElement('figcaption');
-            fc.textContent = cap;
-            fig.appendChild(fc);
-          }
-          return fig;
-        };
-        // Insert figures right after the paragraph each marker sits in (in order).
-        card.querySelectorAll('p').forEach(p => {
-          let anchor = p;
-          p.querySelectorAll('.peek-img').forEach(span => {
-            if (span.dataset.img) { const fig = makeFigure(span.dataset.img, span.dataset.cap); anchor.after(fig); anchor = fig; }
-            span.remove();
-          });
-        });
-        // Any stray markers not inside a <p>: append at the end.
-        card.querySelectorAll('.peek-img').forEach(span => {
-          if (span.dataset.img) card.appendChild(makeFigure(span.dataset.img, span.dataset.cap));
-          span.remove();
-        });
-        return card;
-      }
-
-      function scrollToCard(id) {
-        const card = document.getElementById('m-' + id);
-        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      function updateBack() { backBtn.hidden = feedStack.length <= 1; }
-
-      function addCard(id, animate) {
-        const card = buildCard(id);
-        feed.appendChild(card);
-        feedStack.push(id);
-        if (animate) requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('shown')));
-        else card.classList.add('shown');
-        updateBack();
-        return card;
-      }
-      function removeLastCard() {
-        const id = feedStack.pop();
-        const card = document.getElementById('m-' + id);
-        if (card) card.remove();
-        updateBack();
-      }
-
-      // Open a fragment: append + scroll, or scroll to it if already in the feed.
-      function openFragment(id, fromId) {
-        if (!FRAGMENTS[id]) return;
-        if (fromId) followedEdges.add(fromId + '>' + id);
-        if (document.getElementById('m-' + id)) { scrollToCard(id); return; }
-        addCard(id, true);
-        history.pushState({ stack: [...feedStack] }, '');
-        setTimeout(() => scrollToCard(id), 60);
-      }
-
-      // Reconcile feed to a target stack (browser back/forward).
-      function applyStack(target) {
-        while (feedStack.length > target.length) removeLastCard();
-        for (let i = feedStack.length; i < target.length; i++) addCard(target[i], false);
-        if (feedStack.length) scrollToCard(feedStack[feedStack.length - 1]);
-      }
-      window.addEventListener('popstate', e => {
-        applyStack((e.state && e.state.stack) || [START_ID]);
-      });
-
-      // Prefer a downsized mobile copy (images/sm/…) when one exists.
-      const mobileImg = src => src.replace(/^images\//, 'images/sm/');
-
-      function openLightbox(trigger) {
-        const src = trigger.dataset.img;
-        if (!src) return;
-        lbImg.onerror = () => { lbImg.onerror = null; lbImg.src = src; };  // fall back to full image
-        lbImg.src = mobileImg(src);
-        lbImg.alt = trigger.dataset.cap || '';
-        lbCap.textContent = trigger.dataset.cap || '';
-        lightbox.classList.add('open');
-        lightbox.setAttribute('aria-hidden', 'false');
-      }
-
-      function toggleNote(note) {
-        const next = note.nextElementSibling;
-        if (next && next.classList.contains('m-note-expanded')) { next.remove(); return; }
-        const body = note.querySelector('.peek-body');
-        if (!body) return;
-        const exp = document.createElement('span');
-        exp.className = 'm-note-expanded';
-        // .peek-body is a <template>; its text lives in .content, not textContent.
-        exp.textContent = (body.content ? body.content.textContent : body.textContent).trim();
-        note.after(exp);
-      }
-
-      // --- Delegated taps inside the feed ---
-      feed.addEventListener('click', e => {
-        const link = e.target.closest('a.link');
-        if (link) {
-          e.preventDefault();
-          link.classList.add('visited');
-          const card = link.closest('.m-card');
-          openFragment(link.dataset.target, card && card.dataset.fragId);
-          return;
-        }
-        const figImg = e.target.closest('.m-figure img');
-        if (figImg) { openLightbox(figImg); return; }
-        const note = e.target.closest('.peek-note');
-        if (note) { e.preventDefault(); toggleNote(note); return; }
-        // .peek-res is a real external <a> — let it open normally.
-      });
-
-      // --- Short intro (~title + tap to enter), then seed the start fragment ---
-      const intro = document.createElement('div');
-      intro.className = 'm-intro';
-      intro.innerHTML =
-        '<div class="m-intro-title">Hyperlinks</div>' +
-        '<div class="m-intro-credit">A project by Keyan Thanner</div>' +
-        '<div class="m-intro-notice">This site is best experienced on desktop.</div>' +
-        '<div class="m-intro-enter">tap to enter</div>';
-      document.body.appendChild(intro);
-      requestAnimationFrame(() => intro.querySelector('.m-intro-title').classList.add('shown'));
-      setTimeout(() => intro.querySelector('.m-intro-enter').classList.add('shown'), 1200);
-      let mobileEntered = false;
-      function enterMobile() {
-        if (mobileEntered) return;
-        mobileEntered = true;
-        intro.classList.add('leaving');
-        setTimeout(() => intro.remove(), 600);
-        addCard(START_ID, false);
-        history.replaceState({ stack: [...feedStack] }, '');
-      }
-      intro.addEventListener('click', enterMobile);
-    }
-
-    if (IS_MOBILE) initMobile();
-    else runIntro();
-
-    // Breakpoint cross (rotate / window resize): reload once so the correct
-    // engine initializes cleanly. Guard ensures this only fires on an actual flip.
-    window.addEventListener('resize', () => {
-      if (window.matchMedia('(max-width: 768px)').matches !== IS_MOBILE) location.reload();
-    });
+    runIntro();
 
     // Hook skip-to-content click to skip the intro immediately if active
     document.querySelector('.skip-link').addEventListener('click', e => {
@@ -3805,62 +3094,6 @@
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       }
     });
-
-    /* ============================================================
-       FONT CONSENT (Adobe Fonts / Typekit)
-       narkiss-asaf-variable is served from use.typekit.net (Adobe, USA).
-       We only contact that host after explicit visitor consent.
-       The decision is stored in localStorage (key: 'font-consent') so the
-       banner is only shown once. Storing the consent preference itself is
-       technically necessary and does not require a separate cookie notice.
-       ============================================================ */
-    (function () {
-      const STORAGE_KEY = 'font-consent';
-      const KIT_ID = 'rkn0dhp';
-
-      function applyTypekit() {
-        // Inject preconnect + kit stylesheet; on load, switch --serif to narkiss.
-        const pre = document.createElement('link');
-        pre.rel = 'preconnect'; pre.href = 'https://use.typekit.net'; pre.crossOrigin = '';
-        document.head.appendChild(pre);
-
-        const css = document.createElement('link');
-        css.rel = 'stylesheet';
-        css.href = `https://use.typekit.net/${KIT_ID}.css`;
-        css.onload = () => {
-          document.documentElement.style.setProperty(
-            '--serif',
-            '"narkiss-asaf-variable", "Tinos", "Times New Roman", Times, serif'
-          );
-        };
-        document.head.appendChild(css);
-      }
-
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'accepted') { applyTypekit(); return; }
-      if (stored === 'declined') return;
-
-      // First visit: show the banner.
-      const banner = document.getElementById('font-consent-banner');
-      banner.style.display = '';
-
-      document.getElementById('font-consent-accept').addEventListener('click', () => {
-        localStorage.setItem(STORAGE_KEY, 'accepted');
-        banner.style.display = 'none';
-        applyTypekit();
-      });
-
-      document.getElementById('font-consent-decline').addEventListener('click', () => {
-        localStorage.setItem(STORAGE_KEY, 'declined');
-        banner.style.display = 'none';
-      });
-
-      // "See privacy notice" button opens the legals overlay via the same
-      // openModal() function used by the footer "See legals" button.
-      document.getElementById('font-consent-legals-btn').addEventListener('click', () => {
-        openModal(document.getElementById('legal-overlay'));
-      });
-    }());
   </script>
 </body>
 
