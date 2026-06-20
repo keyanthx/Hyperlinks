@@ -8,16 +8,12 @@
   <meta name="description"
     content="An interactive web essay exploring the history, structure, and future of hyperlinks.">
   <meta name="theme-color" content="#ffffff">
-  <!-- Preconnect to external origins so the TLS handshake starts early. -->
-  <link rel="preconnect" href="https://use.typekit.net" crossorigin>
+  <!-- Preconnect to jsdelivr (html2canvas) so the TLS handshake starts early.
+     NOTE: no preconnect to use.typekit.net — the Adobe Fonts kit (narkiss-asaf-
+     variable) is loaded only after explicit consent via the font-consent banner
+     (see the FONT CONSENT block in the script). Until then the body uses the
+     self-hosted Tinos serif, so no visitor IP reaches Adobe on load. -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <!-- Adobe Fonts kit: narkiss-asaf-variable (body font). Loaded async so it
-     doesn't block first paint; the body falls back to self-hosted Verily Serif
-     Mono until the kit arrives (font-display: swap in the kit handles FOUT). -->
-  <link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css" media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet" href="https://use.typekit.net/rkn0dhp.css">
-  </noscript>
   <!-- html2canvas powers the dissolve snapshots. Loaded async so it doesn't
      block parsing. If the CDN is unreachable or the script hasn't arrived yet,
      dissolves fall back to a plain CSS opacity fade (checked everywhere via
@@ -32,16 +28,24 @@
     }
   </script>
   <style>
-    /* Self-hosted fonts (fonts/) — they load offline and in browsers that
-   block external font hosts.
-   - Verily Serif Mono: body fallback if the Adobe Fonts kit is blocked —
-     a monospace drawn to resemble Times New Roman
-     (license: fonts/verily-license.txt).
-   - Overpass Mono: hover material-shift, captions, footer. */
+    /* Self-hosted fonts (fonts/) — no external font host is contacted on load.
+   All are open-licensed (see fonts/LICENSE.txt).
+   - Tinos: the default body serif. Metric-compatible with Times New Roman;
+     SIL OFL. Used until (and if) the visitor consents to Adobe Fonts.
+   - Overpass Mono: hover material-shift, captions, footer; SIL OFL. */
     @font-face {
-      font-family: 'Verily Serif Mono';
-      src: url('fonts/verily-serif-mono.otf') format('opentype');
-      font-weight: normal;
+      font-family: 'Tinos';
+      src: url('fonts/tinos-400.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Tinos';
+      src: url('fonts/tinos-700.woff2') format('woff2');
+      font-weight: 700;
+      font-style: normal;
       font-display: swap;
     }
 
@@ -55,6 +59,74 @@
     /* ============================================================
    1. Reset / page chrome
    ============================================================ */
+
+    /* Body serif. Defaults to self-hosted Tinos; once the visitor consents to
+   Adobe Fonts (font-consent banner), JS rewrites --serif to put the intended
+   narkiss-asaf-variable first. Used everywhere via var(--serif). */
+    :root {
+      --serif: "Tinos", "Times New Roman", Times, serif;
+    }
+
+    /* Font consent banner — a fixed bottom bar shown on the starting screen
+   until the visitor decides; styled in Overpass Mono to match the chrome. */
+    #font-consent-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: #fff;
+      border-top: 1px solid #111;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-family: "Overpass Mono", monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #111;
+    }
+
+    #font-consent-banner p {
+      flex: 1;
+      margin: 0;
+      font-family: "Overpass Mono", monospace;
+      font-size: 11px;
+      color: #111;
+    }
+
+    #font-consent-banner a {
+      color: #111;
+    }
+
+    .font-consent-btn {
+      font-family: "Overpass Mono", monospace;
+      font-size: 11px;
+      padding: 6px 12px;
+      border: 1px solid #111;
+      background: #fff;
+      color: #111;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .font-consent-btn:hover,
+    .font-consent-btn:focus-visible {
+      background: #111;
+      color: #fff;
+    }
+
+    #font-consent-accept {
+      background: #111;
+      color: #fff;
+    }
+
+    #font-consent-accept:hover,
+    #font-consent-accept:focus-visible {
+      background: #444;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -62,7 +134,7 @@
     }
 
     body {
-      font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
+      font-family: var(--serif);
       font-variation-settings: 'wght' 400, 'MONO' 0;
       width: 100vw;
       height: 100vh;
@@ -547,7 +619,7 @@
     }
 
     .intro-title {
-      font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
+      font-family: var(--serif);
       font-size: clamp(40px, 7vw, 88px);
       line-height: 1.2;
       white-space: nowrap;
@@ -575,7 +647,7 @@
     }
 
     .intro-credit {
-      font-family: "narkiss-asaf-variable", "Verily Serif Mono", "Times New Roman", Times, serif;
+      font-family: var(--serif);
       font-size: clamp(14px, 1.6vw, 18px);
       white-space: nowrap;
     }
@@ -1334,11 +1406,40 @@
         padding: 40px 24px;
         max-height: 88vh;
       }
+
+      /* Font-consent banner: stack vertically so nothing overflows a phone. */
+      #font-consent-banner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 14px 16px;
+      }
+
+      #font-consent-banner .font-consent-btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
 
 <body>
+  <!-- Font consent banner: shown on the starting screen until the visitor
+       accepts or declines Adobe Fonts. The Adobe kit (narkiss-asaf-variable)
+       needs a connection to use.typekit.net (Adobe Inc., USA), which would
+       transmit the visitor's IP. The banner blocks that request until explicit
+       consent is given (GDPR Art. 6(1)(a), §25 TDDDG). -->
+  <div id="font-consent-banner" role="dialog" aria-label="Font preference" style="display:none">
+    <p>This site uses <strong>Adobe Fonts</strong> for its intended typeface
+      (<em>narkiss-asaf-variable</em>). Loading it connects to Adobe Inc. (USA) and
+      transfers your IP address. Declining uses a local fallback (Tinos).
+      <button type="button" id="font-consent-legals-btn"
+        style="background:none;border:none;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer">See
+        privacy notice.</button>
+    </p>
+    <button type="button" class="font-consent-btn" id="font-consent-decline">Use fallback</button>
+    <button type="button" class="font-consent-btn" id="font-consent-accept">Accept Adobe Fonts</button>
+  </div>
+
   <a class="skip-link" href="#canvas">Skip to content</a>
   <h1 class="visually-hidden">Hyperlinks — An interactive web essay by Keyan Thanner</h1>
   <main id="canvas" role="main" aria-live="polite" aria-label="Interactive fragment canvas"></main>
@@ -1495,7 +1596,7 @@
 
       'algorithm-based-feeds': {
         type: 'text',
-        html: `<p>The biggest problem with current social media platforms is their monetization. This relies on collecting personal data and displaying personalized advertising. Accordingly, platforms earn more money the longer you spend on them. To achieve this, algorithms are used whose sole purpose is to attract the most attention. The consequences of these algorithms are not just extreme content; the algorithms also work so well that, with TikTok, there are now platforms where you spend the vast majority of your time automatically watching content recommended by the algorithm.</p>
+        html: `<p>The biggest problem with current social media platforms is their monetization. This relies on collecting personal data and displaying personalized advertising. Accordingly, platforms earn more money the longer you spend on them. To achieve this, algorithms are used whose sole purpose is to attract the most attention. The consequences of these algorithms are not just extreme content and <a class="link" data-target="filter-bubbles" data-from="algorithm-based-feeds">filter-bubbles</a>; the algorithms also work so well that, with TikTok, there are now platforms where you spend the vast majority of your time automatically watching content recommended by the algorithm.</p>
 <p>Especially the shift away from choosing your own content — for example, by subscribing to YouTube channels — toward algorithm-based feeds is important. It is becoming less about human recommendations. How is this development toward <a class="link" data-target="dehumanization" data-from="algorithm-based-feeds">dehumanization</a> changing the web? And can <a class="link" data-target="decentralized-social-media" data-from="algorithm-based-feeds">decentralized social media</a> change it for the better?</p>
 <p>But it is not only that. The algorithm-based feed makes the algorithms more powerful. As with Google, the content on social media changes to be recommended more — not by people, but by the algorithm. This is what I call the <a class="link" data-target="adaptation-to-the-algorithm" data-from="algorithm-based-feeds">Adaptation to the algorithm</a>.</p>`
       },
@@ -1563,7 +1664,7 @@
         type: 'text',
         html: `<p>Indexing makes information findable by connecting it. This applies both to publishing, where an index points to the place of certain keywords, and to the web, where indexing makes pages findable in the first place.</p>
 <p>Search engines like Google build their indexes through crawling<span class="peek-note" data-kind="definition">[?]<template class="peek-body">automated bots follow links across the web, reading and recording pages to build a searchable index</template></span>: automated programs follow links from page to page through the web's nonhierarchical linking the way a reader would and record everything they find. The result is a massive index: a searchable copy of the web. Only a page that has been crawled and indexed can be found at all.</p>
-<p>An index in a book works the same way, pointing from a keyword to the place where it can be found. It is, in a sense, a form of analog linking: a hyperlink on paper.</p>`
+<p>An index in a book works the same way, pointing from a keyword to the place where it can be found. It is, in a sense, a form of analog linking: a hyperlink on paper. The same idea of counting references, as in the Science Citation Index, later became the basis for <a class="link" data-target="pagerank" data-from="index">PageRank</a>.</p>`
       },
 
       'javascript': {
@@ -1578,7 +1679,7 @@
 
       'link-rot': {
         type: 'text',
-        html: `<p>When a website links to another, that connection is permanent and stays fixed until someone changes it in the <a class="link" data-target="html" data-from="link-rot">HTML</a> document itself.</p>
+        html: `<p>When a website links to another, that connection is permanent and stays fixed until someone changes it in the <a class="link" data-target="html" data-from="link-rot">HTML</a> document itself. This one way link design goes back to <a class="link" data-target="tim-berners-lees-proposal" data-from="link-rot">Tim Berners-Lee's Proposal</a>, and link rot is its direct consequence.</p>
 <p>This permanence is exactly what causes “link rot”: a hyperlink stops working once its target moves, changes, or is deleted, while the link itself remains unchanged, now pointing at nothing. This is especially damaging for academia, since scholarship is built on citations that are expected to remain verifiable. To counter this problem, people have started <a class="link" data-target="preserving-the-web" data-from="link-rot">Preserving the web</a> to maintain access to websites that are deleted.</p>`
       },
 
@@ -1604,12 +1705,12 @@
       'open-data': {
         type: 'text',
         html: `<p>Open data is data that anyone can freely access, use, and share, without restrictions from copyright, patents, or control.<a class="peek-res" href="https://opendatahandbook.org/guide/en/what-is-open-data/" target="_blank" rel="noopener" data-label="Open Data Handbook. &quot;What Is Open Data?&quot; Open Knowledge Foundation.">[↗]</a> When <a class="link" data-target="tim-berners-lee" data-from="open-data">Tim Berners-Lee</a> designed the Web, open data was at the core. As early as <a class="link" data-target="tim-berners-lees-proposal" data-from="open-data">Tim Berners-Lee's Proposal</a> in 1989, the core principle was that information should flow freely. When he released the Web in 1993 without patents or fees, that became real — the <a class="link" data-target="web-as-a-common" data-from="open-data">Web as a Common</a>, belonging to no single company or government.</p>
-<p>Closed data creates gatekeepers: whoever controls access controls who can read, build on, or challenge information. Open data removes that gatekeeper. It is what allows researchers, journalists, and developers to work across sources, and it is what makes <a class="link" data-target="knowledge-linking" data-from="open-data">knowledge-linking</a> possible. You can only link to knowledge that is openly reachable.</p>`
+<p>Closed data creates gatekeepers: whoever controls access controls who can read, build on, or challenge information. Open data removes that gatekeeper. But ranking creates a new one: <a class="link" data-target="pagerank" data-from="open-data">PageRank</a> decides what actually gets seen. It is what allows researchers, journalists, and developers to work across sources, and it is what makes <a class="link" data-target="knowledge-linking" data-from="open-data">knowledge-linking</a> possible. You can only link to knowledge that is openly reachable.</p>`
       },
 
       'pagerank': {
         type: 'text',
-        html: `<p>In 1996, Stanford students Larry Page<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ec/Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped%29.jpg" data-cap="Larry Page, European Parliament 2009. Stansfield PL / Wikimedia Commons, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Sergey Brin<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/3/38/Sergey_Brin.JPG" data-cap="Sergey Brin, 2005. Allen Lew / Wikimedia, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed an algorithm that would change how we navigate the web and, later, change the web entirely. What they developed was PageRank<span class="peek-note" data-kind="definition">[?]<template class="peek-body">Google's original ranking algorithm — it scores a page by the number and quality of other pages linking to it, treating each link as a vote.</template></span>, the algorithm that led to and is used by Google. There were different search engines before, like Yahoo, that used a manually maintained <a class="link" data-target="index" data-from="pagerank">index</a> of websites to search later.<a class="peek-res" href="https://thedigitalmaze.com/blog/the-story-of-search-engines-the-past-the-present-and-the-future/" target="_blank" rel="noopener" data-label="The Digital Maze. &quot;The Story of Search Engines: The Past, the Present, and the Future.&quot;">[↗]</a> PageRank used an automatic approach, ranking websites based on how often they are linked to — a method already invented by Eugene Garfield<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF/lossy-page1-500px-Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF.jpg" data-cap="Eugene Garfield, pioneer of citation indexing, 2007. Chemical Heritage Foundation / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> (called “SCI,” short for “Science Citation <a class="link" data-target="index" data-from="pagerank">index</a>”).<a class="peek-res" href="https://www.youtube.com/watch?v=72nfrhXroo8" target="_blank" rel="noopener" data-label="Wright, Alex. &quot;The Web That Wasn't.&quot; Google Tech Talk, YouTube.">[↗]</a> Instead of citations, PageRank used hyperlinks to determine how important a website is. And unlike Yahoo, this method used <a class="link" data-target="non-hierarchical-linking" data-from="pagerank">non-hierarchical linking</a> as the basis. This worked really, really well. In fact, it worked so well that, by the early 2000s, Google had become the dominant search engine. But it didn't stop there. Google became one of the largest companies in the world. And with that power came new pressure on the web. What followed was an <a class="link" data-target="adaptation-to-the-algorithm" data-from="pagerank">Adaptation to the algorithm</a>: websites restructuring themselves not for readers, but for Google's PageRank.</p>`
+        html: `<p>In 1996, Stanford students Larry Page<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ec/Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped%29.jpg" data-cap="Larry Page, European Parliament 2009. Stansfield PL / Wikimedia Commons, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> and Sergey Brin<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/3/38/Sergey_Brin.JPG" data-cap="Sergey Brin, 2005. Allen Lew / Wikimedia, CC BY-SA 2.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> developed an algorithm that would change how we navigate the web and, later, change the web entirely. What they developed was PageRank<span class="peek-note" data-kind="definition">[?]<template class="peek-body">Google's original ranking algorithm — it scores a page by the number and quality of other pages linking to it, treating each link as a vote.</template></span>, the algorithm that led to and is used by Google. There were different search engines before, like Yahoo, that used a manually maintained index of websites to search later.<a class="peek-res" href="https://thedigitalmaze.com/blog/the-story-of-search-engines-the-past-the-present-and-the-future/" target="_blank" rel="noopener" data-label="The Digital Maze. &quot;The Story of Search Engines: The Past, the Present, and the Future.&quot;">[↗]</a> PageRank used an automatic approach, ranking websites based on how often they are linked to — a method already invented by Eugene Garfield<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF/lossy-page1-500px-Eugene_Garfield_HD2007_Richard_J._Bolte_Sr._Award.TIF.jpg" data-cap="Eugene Garfield, pioneer of citation indexing, 2007. Chemical Heritage Foundation / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> (called “SCI,” short for “Science Citation <a class="link" data-target="index" data-from="pagerank">index</a>”).<a class="peek-res" href="https://www.youtube.com/watch?v=72nfrhXroo8" target="_blank" rel="noopener" data-label="Wright, Alex. &quot;The Web That Wasn't.&quot; Google Tech Talk, YouTube.">[↗]</a> Instead of citations, PageRank used hyperlinks to determine how important a website is. And unlike Yahoo, this method used non-hierarchical linking as the basis. This worked really, really well. In fact, it worked so well that, by the early 2000s, Google had become the dominant search engine. But it didn't stop there. Google became one of the largest companies in the world. And with that power came new pressure on the web — on the <a class="link" data-target="web-as-a-common" data-from="pagerank">Web as a Common</a> it had grown out of. What followed was an <a class="link" data-target="adaptation-to-the-algorithm" data-from="pagerank">Adaptation to the algorithm</a>: websites restructuring themselves not for readers, but for Google's PageRank.</p>`
       },
 
       'preserving-the-web': {
@@ -1629,7 +1730,7 @@
 
       'the-visionaries-of-the-web': {
         type: 'text',
-        html: `<p>The saying “We stand on the shoulders of giants” holds especially true for the web as we know it today. Without the work of many individuals in information management, the internet would look completely different from what we know now. The web's fundamental ideas were shaped largely by Vannevar Bush<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ea/Vannevar_Bush_portrait.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>'s <a class="link" data-target="memex" data-from="the-visionaries-of-the-web">Memex</a><span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/fb/Memex_at_Das_Netz_exhibition_of_Deutsches_Technikmuseum.jpg" data-cap="Memex model, Das Netz exhibition, Deutsches Technikmuseum. Bunyk / Wikimedia, CC BY 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, a device that functioned as an analog personal computer with hyperlinks. Douglas Engelbart<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/f0/SRI_Douglas_Engelbart_2008.jpg" data-cap="Douglas Engelbart with the first computer mouse prototype, 2008. SRI International / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> further developed the concept and is widely regarded as the forefather of the hyperlink. Even before the World Wide Web, there were similar visions — most notably <a class="link" data-target="xanadu" data-from="the-visionaries-of-the-web">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span> — which shared many features with the web but also proposed some fundamentally different ideas.</p>`
+        html: `<p>The saying “We stand on the shoulders of giants” holds especially true for the web as we know it today. Without the work of many individuals in information management, the internet would look completely different from what we know now. The web's fundamental ideas were shaped largely by Vannevar Bush<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/e/ea/Vannevar_Bush_portrait.jpg" data-cap="Vannevar Bush, c. 1940–44. U.S. Dept. of Defense / Wikimedia, Public Domain">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>'s <a class="link" data-target="memex" data-from="the-visionaries-of-the-web">Memex</a><span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/fb/Memex_at_Das_Netz_exhibition_of_Deutsches_Technikmuseum.jpg" data-cap="Memex model, Das Netz exhibition, Deutsches Technikmuseum. Bunyk / Wikimedia, CC BY 4.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span>, a device that functioned as an analog personal computer with hyperlinks. Douglas Engelbart<span class="peek-img" data-img="https://upload.wikimedia.org/wikipedia/commons/f/f0/SRI_Douglas_Engelbart_2008.jpg" data-cap="Douglas Engelbart with the first computer mouse prototype, 2008. SRI International / Wikimedia, CC BY-SA 3.0">[<svg class="peek-ico" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="6" r="1.4" fill="currentColor"/><path d="M2.5 12.5 L6.5 8 L9 10.5 L11 8.5 L13.5 12.5 Z" fill="currentColor"/></svg>]</span> further developed the concept and is widely regarded as the forefather of the hyperlink. Even before the World Wide Web, there were similar visions — most notably <a class="link" data-target="xanadu" data-from="the-visionaries-of-the-web">Xanadu</a><span class="peek-note" data-kind="definition">[?]<template class="peek-body">Ted Nelson's 1965 vision for a global hypertext system with two-way links, transclusion, and version history</template></span> — which shared many features with the web but also proposed some fundamentally different ideas. These early visions are explored in <a class="link" data-target="the-web-that-wasnt" data-from="the-visionaries-of-the-web">The Web That Wasn't</a>.</p>`
       },
 
       'tim-berners-lee': {
@@ -1655,7 +1756,7 @@
         type: 'text',
         html: `<p>The World Wide Web can be understood as a digital commons: a shared resource maintained and governed collectively. <a class="link" data-target="tim-berners-lee" data-from="web-as-a-common">Tim Berners-Lee</a>, who invented the web in 1989, envisioned it not simply as open but as governed by rules to ensure that openness.</p>
 <p>The clearest example is <a class="link" data-target="wikipedia" data-from="web-as-a-common">Wikipedia</a>: it is free to use, free to edit, and built by a global community of volunteers. <a class="link" data-target="open-data" data-from="web-as-a-common">Open data</a> extends this to public datasets and information, making them a shared resource that communities can build upon and improve collectively.</p>
-<p>The web itself is also the infrastructure through which commons are navigated and ideas are shared. Open-source platforms like GitHub illustrate this: contributors work together on shared codebases, governed by licenses rather than private ownership.</p>`
+<p>The web itself is also the infrastructure through which commons are navigated and ideas are shared. Open-source platforms like GitHub illustrate this: contributors work together on shared codebases, governed by licenses rather than private ownership. Like any commons, it can also be degraded: as bots and AI slop flood the web with low quality content, the shared resource erodes, an idea captured by the <a class="link" data-target="dead-internet-theory" data-from="web-as-a-common">dead-internet-theory</a>.</p>`
       },
 
       'why-the-network-effect-can-favor-the-fediverse': {
@@ -1687,7 +1788,8 @@
         src: 'https://www.youtube-nocookie.com/embed/dpLG3DpfSlM?si=74YuycY20QoCquYr',
         allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
         notes: [
-          `The video explains the fascinating phenomenon where almost all Wikipedia articles ultimately lead to the Philosophy page via their first hyperlinks. This process illustrates the ladder of abstraction, in which concepts ascend from specific objects to increasingly general categories. For example: The guppy isn't the typical pet or typical fish, but it's the typical pet fish. It also demonstrates how human knowledge is collectively organized. The structure of Wikipedia reflects that information does not exist in isolation, but is interconnected through social consensus. Ultimately, the source shows how millions of small editorial decisions create a knowledge hierarchy that almost always culminates in fundamental philosophical concepts.`
+          `The video explains the fascinating phenomenon where almost all Wikipedia articles ultimately lead to the Philosophy page via their first hyperlinks. This process illustrates the ladder of abstraction, in which concepts ascend from specific objects to increasingly general categories. For example: The guppy isn't the typical pet or typical fish, but it's the typical pet fish. Also it demonstrates how human knowledge is collectively organized. The structure of Wikipedia reflects that information does not exist in isolation, but is interconnected through social consensus, basically <a class="link" data-target="knowledge-linking" data-from="all-roads-lead-to-philosophy">knowledge-linking</a> at scale. Ultimately, the source shows how millions of small editorial decisions create a knowledge hierarchy that almost always culminates in fundamental philosophical concepts, turning the whole of Wikipedia into one big <a class="link" data-target="index" data-from="all-roads-lead-to-philosophy">index</a>. While small error loops form exceptions, the gravitation toward philosophy remains proof of our interconnected conceptual and knowledge order.`,
+          `In <a href="https://road-to-philosophy.com" target="_blank" rel="noopener">https://road-to-philosophy.com</a> you can type any article and see how it links to philosophy.`
         ]
       },
 
@@ -1707,7 +1809,7 @@
         src: 'https://www.youtube-nocookie.com/embed/JheGL6uSF-4?si=RsGMt-DQi9u61k-B',
         allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
         notes: [
-          `The video presents a comprehensive data visualization of the English <a class="link" data-target="wikipedia" data-from="i-made-a-graph-to-wikipedia">Wikipedia</a>, where millions of articles and their connections form a complex network. Using algorithms, thematic communities were identified, demonstrating how closely intertwined subject areas like politics, sports, and pop culture are. The analysis illustrates that the size of a node in the network depends directly on the number of incoming links, with the US being the most frequently referenced page. Additionally, the video explores the small-world phenomenon, or “Six Degrees of Separation,” and finds that despite a few isolated “orphans,” most articles can be reached via surprisingly short click paths.`
+          `The video presents a comprehensive data visualization of the English Wikipedia, where millions of articles and their <a class="link" data-target="knowledge-linking" data-from="i-made-a-graph-to-wikipedia">knowledge-linking</a> form a complex network. Using algorithms, thematic communities were identified, demonstrating how closely intertwined subject areas like politics, sports, and pop culture are. The analysis illustrates that the size of a node in the network depends directly on the number of incoming links, with the US being the most frequently referenced page. Additionally, the video explores the small-world phenomenon, or “Six Degrees of Separation,” and finds that despite a few isolated “orphans,” most articles can be reached via surprisingly short click paths. Finally, it emphasizes that Wikipedia is a dynamic system that continuously changes and evolves through constant user contributions.`
         ]
       },
 
@@ -3773,6 +3875,63 @@
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       }
     });
+
+    /* ============================================================
+       FONT CONSENT (Adobe Fonts / Typekit)
+       narkiss-asaf-variable is served from use.typekit.net (Adobe, USA).
+       That host is contacted only after explicit consent — until then the
+       page renders in self-hosted Tinos, so no visitor IP is disclosed on
+       load. The decision is stored in localStorage (key: 'font-consent') so
+       the banner is shown only once; storing the preference itself is
+       technically necessary and needs no separate cookie notice.
+       ============================================================ */
+    (function () {
+      const STORAGE_KEY = 'font-consent';
+      const KIT_ID = 'rkn0dhp';
+
+      function applyTypekit() {
+        // Inject preconnect + kit stylesheet; once loaded, put narkiss first.
+        const pre = document.createElement('link');
+        pre.rel = 'preconnect'; pre.href = 'https://use.typekit.net'; pre.crossOrigin = '';
+        document.head.appendChild(pre);
+
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = `https://use.typekit.net/${KIT_ID}.css`;
+        css.onload = () => {
+          document.documentElement.style.setProperty(
+            '--serif',
+            '"narkiss-asaf-variable", "Tinos", "Times New Roman", Times, serif'
+          );
+        };
+        document.head.appendChild(css);
+      }
+
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === 'accepted') { applyTypekit(); return; }
+      if (stored === 'declined') return;
+
+      // First visit: show the banner on the starting screen.
+      const banner = document.getElementById('font-consent-banner');
+      banner.style.display = '';
+
+      document.getElementById('font-consent-accept').addEventListener('click', () => {
+        localStorage.setItem(STORAGE_KEY, 'accepted');
+        banner.style.display = 'none';
+        applyTypekit();
+      });
+
+      document.getElementById('font-consent-decline').addEventListener('click', () => {
+        localStorage.setItem(STORAGE_KEY, 'declined');
+        banner.style.display = 'none';
+      });
+
+      // "See privacy notice" opens the legals overlay via the same openModal()
+      // used by the footer "See legals" button.
+      document.getElementById('font-consent-legals-btn').addEventListener('click', () => {
+        openModal(document.getElementById('legal-overlay'));
+      });
+    }());
   </script>
 </body>
 
