@@ -38,6 +38,13 @@
       font-style: normal;
       font-display: swap;
     }
+    @font-face {
+      font-family: 'Narkiss Asaf Regular';
+      src: url('fonts/NarkissAsaf-Regular-TRIAL.otf') format('opentype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
 
     @font-face {
       font-family: 'Tinos';
@@ -145,7 +152,7 @@
     }
 
     .fragment.text p {
-      font-size: clamp(12px, 1.4vw, 14px);
+      font-size: clamp(11px, 1.3vw, 13px);
       line-height: 1.6;
       color: #111;
       margin-bottom: 0.75em;
@@ -195,6 +202,77 @@
       pointer-events: none;
     }
 
+    /* YouTube consent gate: shown in place of the iframe so that NO request
+       reaches Google (no cookies, no thumbnail fetch) until the visitor clicks
+       to load. Sized like iframe.media (260px) so collision measurement before
+       load stays correct and there is no layout jump once the embed appears. */
+    .yt-consent {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      height: 260px;
+      padding: 20px 22px;
+      background: #e8e6e0;
+      border: 1px solid #d4d1c8;
+      text-align: center;
+    }
+
+    .yt-consent-mark {
+      flex: none;
+    }
+
+    .yt-consent-text {
+      margin: 0;
+      max-width: 30em;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #444;
+    }
+
+    .yt-consent-text strong {
+      font-weight: 600;
+      color: #111;
+    }
+
+    .yt-consent-btn {
+      font-family: "Overpass Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      background: #111;
+      border: 0;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .yt-consent-btn:hover,
+    .yt-consent-btn:focus-visible {
+      background: #0000EE;
+      outline: none;
+    }
+
+    .yt-consent-legal {
+      font-family: "Overpass Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      color: #767676;
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .yt-consent-legal:hover,
+    .yt-consent-legal:focus-visible {
+      color: #0000EE;
+    }
+
     .note {
       margin-top: 8px;
       font-size: 12px;
@@ -219,9 +297,9 @@
     }
 
     /* Hover material shift: words near the cursor swap from the body font
-   to Overpass Mono. The font-size is set per word so the mono face fits
-   the word's locked width (no reflow, no overflow).
-   Color unchanged so links stay distinct. */
+   to Overpass Mono. All matted words share one mono size (set in JS) that
+   is as close to the body size as the text width allows; each word's width
+   is locked so the paragraph never reflows. Color unchanged so links stay distinct. */
     .word.mat {
       font-family: "Overpass Mono", monospace;
       white-space: nowrap;
@@ -233,6 +311,7 @@
    ============================================================ */
     a.link,
     a.peek-res,
+    a.doc-ext,
     .peek-img,
     .peek-note {
       color: #0000EE;
@@ -271,6 +350,8 @@
     a.link:focus-visible,
     a.peek-res:hover,
     a.peek-res:focus-visible,
+    a.doc-ext:hover,
+    a.doc-ext:focus-visible,
     a.link.on-canvas:not(.dead) {
       background-position: 0 100%;
       background-size: 100% 1.5px;
@@ -280,6 +361,7 @@
    mouse click. Applied to links, peek triggers, and footer buttons. */
     a.link:focus-visible,
     a.peek-res:focus-visible,
+    a.doc-ext:focus-visible,
     .peek-note:focus-visible,
     .peek-img:focus-visible,
     #doc-link:focus-visible,
@@ -294,6 +376,7 @@
    handles keyboard users). */
     a.link:focus:not(:focus-visible),
     a.peek-res:focus:not(:focus-visible),
+    a.doc-ext:focus:not(:focus-visible),
     .peek-note:focus:not(:focus-visible),
     .peek-img:focus:not(:focus-visible),
     #doc-link:focus:not(:focus-visible),
@@ -587,9 +670,11 @@
     }
 
     .intro-title {
-      font-family: var(--serif);
+      font-family: 'Narkiss Asaf Regular', "Tinos", serif;
       font-size: clamp(40px, 7vw, 88px);
       line-height: 1.2;
+      /* Tighter tracking than body text, as titles want at display size. */
+      letter-spacing: -0.02em;
       white-space: nowrap;
       cursor: default;
       /* Same animated underline sweep as a fragment link (a.link). */
@@ -615,7 +700,7 @@
     }
 
     .intro-credit {
-      font-family: var(--serif);
+      font-family: 'Narkiss Asaf Regular', "Tinos", serif;
       font-size: clamp(14px, 1.6vw, 18px);
       white-space: nowrap;
     }
@@ -830,6 +915,48 @@
       margin-bottom: 0.75em;
     }
 
+    /* Legal modal: nested heading levels for the site notice + privacy policy.
+       Semantic outline is h2 (modal title) > h3.fragment-caption (document) >
+       h4 .l-sec > h5 .l-sub > h6 .l-q; the classes carry the styling. */
+    .doc-content .l-sec,
+    .doc-content .l-sub,
+    .doc-content .l-q {
+      font-family: "Overpass Mono", monospace;
+      font-weight: 400;
+      line-height: 1.4;
+      color: #111;
+    }
+
+    .doc-content .l-sec {
+      font-size: 13px;
+      margin: 1.6em 0 0.5em;
+    }
+
+    .doc-content .l-sub {
+      font-size: 12px;
+      margin: 1.1em 0 0.35em;
+      color: #333;
+    }
+
+    .doc-content .l-q {
+      font-size: 12px;
+      margin: 0.8em 0 0.25em;
+      color: #767676;
+    }
+
+    .doc-content ul {
+      margin: 0 0 0.75em 0;
+      padding-left: 1.25em;
+      list-style: disc;
+    }
+
+    .doc-content li {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #111;
+      margin-bottom: 0.35em;
+    }
+
     /* Image placeholder — same gray box as a fragment's .media. */
     .doc-img {
       display: flex;
@@ -1006,6 +1133,13 @@
       /* No cursor-drag on touch — let the embed be used directly. */
       .iframe-shield {
         display: none;
+      }
+
+      /* Match the mobile embed box (16/9, height-driven by width). */
+      .yt-consent {
+        height: auto;
+        min-height: 180px;
+        aspect-ratio: 16 / 9;
       }
 
       /* Hide desktop chrome (replaced by the mobile bar) and the desktop intro. */
@@ -1330,6 +1464,10 @@
           <figcaption class="note">Fragments (dis)appear and respond to hover, expanding the space of the 2D canvas.</figcaption>
         </figure>
 
+        <h3 class="fragment-caption">typography</h3>
+        <p>My default font is <a class="doc-ext" href="https://fontef.com/narkiss-asaf" target="_blank" rel="noopener">Narkiss Asaf Mono</a> by Zvi Narkiss. The main reason I chose a monospace font is the hover-over effect, which swaps the text for <a class="doc-ext" href="https://fonts.google.com/specimen/Overpass+Mono" target="_blank" rel="noopener">Overpass Mono</a>: because both fonts share the same fixed-width grid, the swap stays stable with no shifting of the text.</p>
+        <p>Beyond that, Narkiss Asaf Mono is a rare monospace with serifs. Its fixed-width grid gives the fragments a typewritten, mechanical rhythm that fits the Web 1.0 aesthetic of the canvas, while the serifs lend the letters a warmth and personality that most monospaced fonts lack. For the hover-over effect, I pair it with Overpass Mono, whose own monospaced form lets the two typefaces sit naturally side by side. Overpass Mono is far more technical in character, and this creates a tension between warmth and the technical. It shows the human using machines and technology.</p>
+
         <h3 class="fragment-caption">technical implementation</h3>
         <p>For this project, I had code generated using agentic AI for the first time—so-called vibecoding or agentic coding. I quickly realized the many possibilities of this technology. Ideas can be implemented very quickly and at a high technical level. It is not about giving up creative decisions but rather about executing my ideas quickly and with minimal friction.</p>
         <figure class="doc-figure">
@@ -1345,23 +1483,127 @@
       <button class="doc-close" aria-label="Close legal">×</button>
       <div class="doc-content">
         <h2>Legal</h2>
-        <!-- Placeholder legal text — replace with the real imprint / privacy notice. -->
+        <h3 class="fragment-caption">site notice</h3>
+        <p>Keyan Thanner<br />
+          Dr.-Salvador-Allende-Str. 2<br />
+          99425 Weimar</p>
+        <h5 class="l-sub">Contact</h5>
+        <p>Phone: &#91;Telefonnummer&#93;<br />
+          E-mail: keyanthanner@proton.me</p>
 
-        <h3 class="fragment-caption">imprint</h3>
-        <p>Placeholder imprint. Hyperlinks — a project by Keyan Thanner, supervised by Jun. Prof. Katharina Köhler.
-          Replace this with the responsible person, address, and contact details required for the imprint.</p>
-        <p>Contact: placeholder@example.com. Replace with the actual contact address.</p>
+        <h3 class="fragment-caption">privacy policy</h3>
 
-        <h3 class="fragment-caption">privacy</h3>
-        <p>Placeholder privacy notice. This page is static and self-contained: fonts are hosted locally and there are no
-          analytics, cookies, or third-party trackers. Replace this paragraph with the real privacy statement once
-          finalised.</p>
-        <p>If any external content is embedded — for example a remote video or an embedded web page — note here what
-          data those third parties may receive when you load it.</p>
+        <h4 class="l-sec">1. An overview of data protection</h4>
+        <h5 class="l-sub">General information</h5>
+        <p>The following information will provide you with an easy to navigate overview of what will happen with your personal data when you visit this website. The term &ldquo;personal data&rdquo; comprises all data that can be used to personally identify you. For detailed information about the subject matter of data protection, please consult our Data Protection Declaration, which we have included beneath this copy.</p>
+        <h5 class="l-sub">Data recording on this website</h5>
+        <h6 class="l-q">Who is the responsible party for the recording of data on this website (i.e., the &ldquo;controller&rdquo;)?</h6>
+        <p>The data on this website is processed by the operator of the website, whose contact information is available under section &ldquo;Information about the responsible party (referred to as the &ldquo;controller&rdquo; in the GDPR)&rdquo; in this Privacy Policy.</p>
+        <h6 class="l-q">How do we record your data?</h6>
+        <p>We collect your data as a result of your sharing of your data with us. This may, for instance be information you enter into our contact form.</p>
+        <p>Other data shall be recorded by our IT systems automatically or after you consent to its recording during your website visit. This data comprises primarily technical information (e.g., web browser, operating system, or time the site was accessed). This information is recorded automatically when you access this website.</p>
+        <h6 class="l-q">What are the purposes we use your data for?</h6>
+        <p>A portion of the information is generated to guarantee the error free provision of the website. Other data may be used to analyze your user patterns. If contracts can be concluded or initiated via the website, the transmitted data will also be processed for contract offers, orders or other order enquiries.</p>
+        <h6 class="l-q">What rights do you have as far as your information is concerned?</h6>
+        <p>You have the right to receive information about the source, recipients, and purposes of your archived personal data at any time without having to pay a fee for such disclosures. You also have the right to demand that your data are rectified or eradicated. If you have consented to data processing, you have the option to revoke this consent at any time, which shall affect all future data processing. Moreover, you have the right to demand that the processing of your data be restricted under certain circumstances. Furthermore, you have the right to log a complaint with the competent supervising agency.</p>
+        <p>Please do not hesitate to contact us at any time if you have questions about this or any other data protection related issues.</p>
+
+        <h4 class="l-sec">2. Hosting</h4>
+        <p>We are hosting the content of our website at the following provider:</p>
+        <h5 class="l-sub">External Hosting</h5>
+        <p>This website is hosted externally. Personal data collected on this website are stored on the servers of the host. These may include, but are not limited to, IP addresses, contact requests, metadata and communications, contract information, contact information, names, web page access, and other data generated through a web site.</p>
+        <p>The external hosting serves the purpose of fulfilling the contract with our potential and existing customers (Art. 6(1)(b) GDPR) and in the interest of secure, fast, and efficient provision of our online services by a professional provider (Art. 6(1)(f) GDPR). If appropriate consent has been obtained, the processing is carried out exclusively on the basis of Art. 6 (1)(a) GDPR and &sect; 25 (1) TDDDG, insofar the consent includes the storage of cookies or the access to information in the user's end device (e.g., device fingerprinting) within the meaning of the TDDDG. This consent can be revoked at any time.</p>
+        <p>Our host(s) will only process your data to the extent necessary to fulfil its performance obligations and to follow our instructions with respect to such data.</p>
+        <p>We are using the following host(s):</p>
+        <p>GitHub, Inc.<br />
+          88 Colin P. Kelly Jr. Street<br />
+          San Francisco, CA 94107<br />
+          United States</p>
+        <h6 class="l-q">Data processing</h6>
+        <p>We have concluded a data processing agreement (DPA) for the use of the above-mentioned service. This is a contract mandated by data privacy laws that guarantees that they process personal data of our website visitors only based on our instructions and in compliance with the GDPR.</p>
+
+        <h4 class="l-sec">3. General information and mandatory information</h4>
+        <h5 class="l-sub">Data protection</h5>
+        <p>The operators of this website and its pages take the protection of your personal data very seriously. Hence, we handle your personal data as confidential information and in compliance with the statutory data protection regulations and this Data Protection Declaration.</p>
+        <p>Whenever you use this website, a variety of personal information will be collected. Personal data comprises data that can be used to personally identify you. This Data Protection Declaration explains which data we collect as well as the purposes we use this data for. It also explains how, and for which purpose the information is collected.</p>
+        <p>We herewith advise you that the transmission of data via the Internet (i.e., through e-mail communications) may be prone to security gaps. It is not possible to completely protect data against third-party access.</p>
+        <h5 class="l-sub">Information about the responsible party (referred to as the &ldquo;controller&rdquo; in the GDPR)</h5>
+        <p>The data processing controller on this website is:</p>
+        <p>Keyan Thanner<br />
+          Dr.-Salvador-Allende Str. 2<br />
+          99425 Weimar</p>
+        <p>Phone: &#91;Telefonnummer der verantwortlichen Stelle&#93;<br />
+          E-mail: keyanthanner@proton.me</p>
+        <p>The controller is the natural person or legal entity that single-handedly or jointly with others makes decisions as to the purposes of and resources for the processing of personal data (e.g., names, e-mail addresses, etc.).</p>
+        <h5 class="l-sub">Storage duration</h5>
+        <p>Unless a more specific storage period has been specified in this privacy policy, your personal data will remain with us until the purpose for which it was collected no longer applies. If you assert a justified request for deletion or revoke your consent to data processing, your data will be deleted, unless we have other legally permissible reasons for storing your personal data (e.g., tax or commercial law retention periods); in the latter case, the deletion will take place after these reasons cease to apply.</p>
+        <h5 class="l-sub">General information on the legal basis for the data processing on this website</h5>
+        <p>If you have consented to data processing, we process your personal data on the basis of Art. 6(1)(a) GDPR or Art. 9 (2)(a) GDPR, if special categories of data are processed according to Art. 9 (1) DSGVO. In the case of explicit consent to the transfer of personal data to third countries, the data processing is also based on Art. 49 (1)(a) GDPR. If you have consented to the storage of cookies or to the access to information in your end device (e.g., via device fingerprinting), the data processing is additionally based on &sect; 25 (1) TDDDG. The consent can be revoked at any time. If your data is required for the fulfillment of a contract or for the implementation of pre-contractual measures, we process your data on the basis of Art. 6(1)(b) GDPR. Furthermore, if your data is required for the fulfillment of a legal obligation, we process it on the basis of Art. 6(1)(c) GDPR. Furthermore, the data processing may be carried out on the basis of our legitimate interest according to Art. 6(1)(f) GDPR. Information on the relevant legal basis in each individual case is provided in the following paragraphs of this privacy policy.</p>
+        <h5 class="l-sub">Recipients of personal data</h5>
+        <p>In the scope of our business activities, we cooperate with various external parties. In some cases, this also requires the transfer of personal data to these external parties. We only disclose personal data to external parties if this is required as part of the fulfillment of a contract, if we are legally obligated to do so (e.g., disclosure of data to tax authorities), if we have a legitimate interest in the disclosure pursuant to Art. 6 (1)(f) GDPR, or if another legal basis permits the disclosure of this data. When using processors, we only disclose personal data of our customers on the basis of a valid contract on data processing. In the case of joint processing, a joint processing agreement is concluded.</p>
+        <h5 class="l-sub">Revocation of your consent to the processing of data</h5>
+        <p>A wide range of data processing transactions are possible only subject to your express consent. You can also revoke at any time any consent you have already given us. This shall be without prejudice to the lawfulness of any data collection that occurred prior to your revocation.</p>
+        <h5 class="l-sub">Right to object to the collection of data in special cases; right to object to direct advertising (Art. 21 GDPR)</h5>
+        <p>IN THE EVENT THAT DATA ARE PROCESSED ON THE BASIS OF ART. 6(1)(E) OR (F) GDPR, YOU HAVE THE RIGHT TO AT ANY TIME OBJECT TO THE PROCESSING OF YOUR PERSONAL DATA BASED ON GROUNDS ARISING FROM YOUR UNIQUE SITUATION. THIS ALSO APPLIES TO ANY PROFILING BASED ON THESE PROVISIONS. TO DETERMINE THE LEGAL BASIS, ON WHICH ANY PROCESSING OF DATA IS BASED, PLEASE CONSULT THIS DATA PROTECTION DECLARATION. IF YOU LOG AN OBJECTION, WE WILL NO LONGER PROCESS YOUR AFFECTED PERSONAL DATA, UNLESS WE ARE IN A POSITION TO PRESENT COMPELLING PROTECTION WORTHY GROUNDS FOR THE PROCESSING OF YOUR DATA, THAT OUTWEIGH YOUR INTERESTS, RIGHTS AND FREEDOMS OR IF THE PURPOSE OF THE PROCESSING IS THE CLAIMING, EXERCISING OR DEFENCE OF LEGAL ENTITLEMENTS (OBJECTION PURSUANT TO ART. 21(1) GDPR).</p>
+        <p>IF YOUR PERSONAL DATA IS BEING PROCESSED IN ORDER TO ENGAGE IN DIRECT ADVERTISING, YOU HAVE THE RIGHT TO OBJECT TO THE PROCESSING OF YOUR AFFECTED PERSONAL DATA FOR THE PURPOSES OF SUCH ADVERTISING AT ANY TIME. THIS ALSO APPLIES TO PROFILING TO THE EXTENT THAT IT IS AFFILIATED WITH SUCH DIRECT ADVERTISING. IF YOU OBJECT, YOUR PERSONAL DATA WILL SUBSEQUENTLY NO LONGER BE USED FOR DIRECT ADVERTISING PURPOSES (OBJECTION PURSUANT TO ART. 21(2) GDPR).</p>
+        <h5 class="l-sub">Right to log a complaint with the competent supervisory agency</h5>
+        <p>In the event of violations of the GDPR, data subjects are entitled to log a complaint with a supervisory agency, in particular in the member state where they usually maintain their domicile, place of work or at the place where the alleged violation occurred. The right to log a complaint is in effect regardless of any other administrative or court proceedings available as legal recourses.</p>
+        <h5 class="l-sub">Right to data portability</h5>
+        <p>You have the right to have data that we process automatically on the basis of your consent or in fulfillment of a contract handed over to you or to a third party in a common, machine-readable format. If you should demand the direct transfer of the data to another controller, this will be done only if it is technically feasible.</p>
+        <h5 class="l-sub">Information about, rectification and eradication of data</h5>
+        <p>Within the scope of the applicable statutory provisions, you have the right to demand information about your archived personal data, their source and recipients as well as the purpose of the processing of your data at any time. You may also have a right to have your data rectified or eradicated. If you have questions about this subject matter or any other questions about personal data, please do not hesitate to contact us at any time.</p>
+        <h5 class="l-sub">Right to demand processing restrictions</h5>
+        <p>You have the right to demand the imposition of restrictions as far as the processing of your personal data is concerned. To do so, you may contact us at any time. The right to demand restriction of processing applies in the following cases:</p>
+        <ul>
+          <li>In the event that you should dispute the correctness of your data archived by us, we will usually need some time to verify this claim. During the time that this investigation is ongoing, you have the right to demand that we restrict the processing of your personal data.</li>
+          <li>If the processing of your personal data was/is conducted in an unlawful manner, you have the option to demand the restriction of the processing of your data instead of demanding the eradication of this data.</li>
+          <li>If we do not need your personal data any longer and you need it to exercise, defend or claim legal entitlements, you have the right to demand the restriction of the processing of your personal data instead of its eradication.</li>
+          <li>If you have raised an objection pursuant to Art. 21(1) GDPR, your rights and our rights will have to be weighed against each other. As long as it has not been determined whose interests prevail, you have the right to demand a restriction of the processing of your personal data.</li>
+        </ul>
+        <p>If you have restricted the processing of your personal data, these data &ndash; with the exception of their archiving &ndash; may be processed only subject to your consent or to claim, exercise or defend legal entitlements or to protect the rights of other natural persons or legal entities or for important public interest reasons cited by the European Union or a member state of the EU.</p>
+        <h5 class="l-sub">SSL and/or TLS encryption</h5>
+        <p>For security reasons and to protect the transmission of confidential content, such as purchase orders or inquiries you submit to us as the website operator, this website uses either an SSL or a TLS encryption program. You can recognize an encrypted connection by checking whether the address line of the browser switches from &ldquo;http://&rdquo; to &ldquo;https://&rdquo; and also by the appearance of the lock icon in the browser line.</p>
+        <p>If the SSL or TLS encryption is activated, data you transmit to us cannot be read by third parties.</p>
+
+        <h4 class="l-sec">4. Plug-ins and Tools</h4>
+        <h5 class="l-sub">YouTube with expanded data protection integration</h5>
+        <p>This website integrates videos from the YouTube website. The operator of the website is Google Ireland Limited (&ldquo;Google&rdquo;), Gordon House, Barrow Street, Dublin 4, Ireland.</p>
+        <p>When you visit one of these websites on which YouTube is integrated, a connection to the YouTube servers is established. This tells the YouTube server which of our pages you have visited. If you are logged into your YouTube account, you enable YouTube to assign your surfing behavior directly to your personal profile. You can prevent this by logging out of your YouTube account.</p>
+        <p>We use YouTube in extended data protection mode. According to YouTube, videos that are played in extended data protection mode are not used to personalize browsing on YouTube. Ads that are played in extended data protection mode are also not personalized. No cookies are set in extended data protection mode. Instead, so-called local storage elements are stored in the user's browser, which contain personal data similar to cookies and can be used for recognition. Details on the extended data protection mode can be found here: <a class="doc-ext" href="https://support.google.com/youtube/answer/171780" target="_blank" rel="noopener noreferrer">https://support.google.com/youtube/answer/171780</a>.</p>
+        <p>After activating a YouTube video, further data processing operations may be triggered over which we have no influence.</p>
+        <p>The use of YouTube is based on our interest in presenting our online content in an appealing manner. Pursuant to Art. 6(1)(f) GDPR, this is a legitimate interest. If appropriate consent has been obtained, the processing is carried out exclusively on the basis of Art. 6(1)(a) GDPR and &sect; 25 (1) TDDDG, insofar the consent includes the storage of cookies or the access to information in the user&rsquo;s end device (e.g., device fingerprinting) within the meaning of the TDDDG. This consent can be revoked at any time.</p>
+        <p>For more information on how YouTube handles user data, please consult the YouTube Data Privacy Policy under: <a class="doc-ext" href="https://policies.google.com/privacy?hl=en" target="_blank" rel="noopener noreferrer">https://policies.google.com/privacy?hl=en</a>.</p>
+        <p>The company is certified in accordance with the &ldquo;EU-US Data Privacy Framework&rdquo; (DPF). The DPF is an agreement between the European Union and the US, which is intended to ensure compliance with European data protection standards for data processing in the US. Every company certified under the DPF is obliged to comply with these data protection standards. For more information, please contact the provider under the following link: <a class="doc-ext" href="https://www.dataprivacyframework.gov/participant/5780" target="_blank" rel="noopener noreferrer">https://www.dataprivacyframework.gov/participant/5780</a>.</p>
 
         <h3 class="fragment-caption">copyright</h3>
-        <p>Placeholder copyright notice. © Keyan Thanner. All texts and images are placeholders until replaced. State
-          here the licence and any attributions for third-party material.</p>
+        <p>&copy; 2026 Keyan Thanner. <em>Hyperlinks</em> is a student project. The original texts, concept, visual design and code are the work of the author and &mdash; except for the third-party material noted below &mdash; are licensed under <a class="doc-ext" href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)</a>. You may share and adapt them for non-commercial purposes, with attribution, under the same licence.</p>
+
+        <h5 class="l-sub">Images</h5>
+        <p>All embedded images are sourced from <a class="doc-ext" href="https://commons.wikimedia.org" target="_blank" rel="noopener">Wikimedia Commons</a> and remain the property of their respective authors. They are used under their individual licences, which include:</p>
+        <ul>
+          <li>Creative Commons CC BY 2.0, CC BY-SA 2.0, CC BY-SA 3.0, CC BY 4.0 and CC BY-SA 4.0;</li>
+          <li>works in the Public Domain;</li>
+          <li>and one asset under the GNU Affero General Public License (AGPL).</li>
+        </ul>
+        <p>The author, source and specific licence for each image are stated in that image&rsquo;s caption (shown when the image is opened). Images under a ShareAlike (SA) licence carry share-alike terms; any reuse must keep the same licence and attribution.</p>
+
+        <h5 class="l-sub">Embedded video</h5>
+        <p>The embedded videos are hosted on YouTube and remain the copyright of their respective creators. They are referenced for commentary and educational purposes and are loaded only after you give consent (see the privacy policy above). Their use is subject to the <a class="doc-ext" href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">YouTube Terms of Service</a>.</p>
+
+        <h5 class="l-sub">Typefaces</h5>
+        <p>The serif typeface Narkiss Asaf is designed by Zvi Narkiss and published by <a class="doc-ext" href="https://fontef.com/narkiss-asaf" target="_blank" rel="noopener">Fontef</a>. <a class="doc-ext" href="https://fonts.google.com/specimen/Tinos" target="_blank" rel="noopener">Tinos</a> and <a class="doc-ext" href="https://fonts.google.com/specimen/Overpass+Mono" target="_blank" rel="noopener">Overpass Mono</a> are used under the <a class="doc-ext" href="https://openfontlicense.org" target="_blank" rel="noopener">SIL Open Font License 1.1</a>.</p>
+
+        <h5 class="l-sub">Software</h5>
+        <p>The dissolve and materialize effects are rendered with <a class="doc-ext" href="https://github.com/niklasvh/html2canvas" target="_blank" rel="noopener">html2canvas</a> 1.4.1, &copy; its authors, used under the <a class="doc-ext" href="https://github.com/niklasvh/html2canvas/blob/master/LICENSE" target="_blank" rel="noopener">MIT License</a>.</p>
+
+        <h5 class="l-sub">Quotations</h5>
+        <p>Short third-party quotations &mdash; including text from <a class="doc-ext" href="https://en.wikipedia.org/wiki/Wikipedia" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA) and from cited authors such as Hossein Derakhshan and Tim Berners-Lee &mdash; are used under the right of quotation for the purpose of commentary and criticism. Each quotation is attributed at its point of use.</p>
+
+        <h5 class="l-sub">Trademarks</h5>
+        <p>Product names and logos referred to on this site (such as YouTube, Google, Wikipedia, Mastodon and Bluesky) are trademarks of their respective owners. Their use here is nominative and implies no affiliation with or endorsement by those owners.</p>
+
+        <h5 class="l-sub">Reporting infringement</h5>
+        <p>This is a non-commercial student project and every effort has been made to credit sources correctly. If you believe any material infringes your rights, please contact <a class="doc-ext" href="mailto:keyanthanner@proton.me">keyanthanner@proton.me</a> and it will be reviewed and, if necessary, removed promptly.</p>
       </div>
     </div>
   </div>
@@ -2071,6 +2313,31 @@
       return (notes || []).map(n => `<p class="note">${n}</p>`).join('');
     }
 
+    // True for any YouTube embed URL (incl. the privacy-enhanced -nocookie host).
+    function isYouTube(src) {
+      return /youtube(-nocookie)?\.com|youtu\.be/i.test(src || '');
+    }
+
+    // The live embed: iframe + the transparent drag shield. Iframes swallow mouse
+    // events, so the cursor-drag never reaches the page; the shield catches hover
+    // (enabling the drag) and steps aside on click so the embed stays usable.
+    function iframeMarkup(src, allow, title) {
+      return `<div class="media-wrap"><iframe class="media" title="${title || 'Interactive iframe embed'}" src="${src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"${allow}></iframe><div class="iframe-shield" title="click to use · drag to move"></div></div>`;
+    }
+
+    // Consent placeholder for a YouTube embed: loads nothing from Google (no
+    // cookies, no thumbnail). It carries the real src/allow/title on data-attrs;
+    // the click handler (section 9) swaps it for the live iframe only on consent.
+    function ytConsentMarkup(frag) {
+      const title = frag.title || 'YouTube video';
+      return `<div class="media-wrap"><div class="yt-consent" data-src="${frag.src}" data-allow="${frag.allow || ''}" data-title="${title}">`
+        + `<svg class="yt-consent-mark" viewBox="0 0 48 34" width="44" height="31" aria-hidden="true"><rect width="48" height="34" rx="8" fill="#111"/><path d="M19 10 L34 17 L19 24 Z" fill="#fff"/></svg>`
+        + `<p class="yt-consent-text">This video is hosted on <strong>YouTube</strong>. Loading it contacts Google&rsquo;s servers, which may set cookies and transfer personal data. Nothing is loaded until you agree.</p>`
+        + `<button type="button" class="yt-consent-btn">Load video</button>`
+        + `<button type="button" class="yt-consent-legal">privacy policy</button>`
+        + `</div></div>`;
+    }
+
     // Medium (image / video / iframe) + notes below it.
     function mediaMarkup(frag) {
       let media = '';
@@ -2080,10 +2347,9 @@
         media = `<video class="media" src="${frag.src}"${frag.poster ? ` poster="${frag.poster}"` : ''} controls preload="metadata"></video>`;
       } else if (frag.type === 'iframe') {
         const allow = frag.allow ? ` allow="${frag.allow}"` : '';
-        // Iframes swallow mouse events, so the cursor-drag never reaches the page.
-        // A transparent shield over the embed catches hover (enabling the drag) and
-        // steps aside on click so the embed stays usable.
-        media = `<div class="media-wrap"><iframe class="media" title="${frag.title || 'Interactive iframe embed'}" src="${frag.src}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"${allow}></iframe><div class="iframe-shield" title="click to use · drag to move"></div></div>`;
+        // YouTube embeds are gated behind an explicit consent click; everything
+        // else (e.g. a blog page) loads directly as before.
+        media = isYouTube(frag.src) ? ytConsentMarkup(frag) : iframeMarkup(frag.src, allow, frag.title);
       }
       return media + notesMarkup(frag.notes);
     }
@@ -2257,12 +2523,32 @@
       if (down) down.classList.remove('down');
     }, true);
 
+    // YouTube consent gate: the embed is built (and Google first contacted) only
+    // here, when the visitor clicks "Load video". The "privacy policy" link opens
+    // the legal modal. Works on desktop and mobile (both share this listener).
+    document.addEventListener('click', e => {
+      if (e.target.closest('.yt-consent-legal')) {
+        openModal(document.getElementById('legal-overlay'));
+        return;
+      }
+      const btn = e.target.closest('.yt-consent-btn');
+      if (!btn) return;
+      const gate = btn.closest('.yt-consent');
+      const wrap = gate && gate.closest('.media-wrap');
+      if (!wrap) return;
+      const allow = gate.dataset.allow ? ` allow="${gate.dataset.allow}"` : '';
+      // iframeMarkup() returns its own .media-wrap, so replace the whole wrapper
+      // (gate included) rather than its contents — otherwise the wraps would nest.
+      wrap.outerHTML = iframeMarkup(gate.dataset.src, allow, gate.dataset.title);
+    });
+
     /* ============================================================
        10. HOVER MATERIAL SHIFT
        Words near the cursor switch from the body font to Overpass
        Mono — the machine text beneath the prose. Each word's rendered
-       width is locked before the font swap and the mono size is fitted
-       to that width, so the paragraph never reflows.
+       width is locked before the font swap so the paragraph never
+       reflows, and all matted words share one mono size (computed per
+       fragment) that sits as close to the body size as the width allows.
        ============================================================ */
     const canvasEl = document.getElementById('canvas');
 
@@ -2280,24 +2566,31 @@
 
     let hoverFrag = null;
     let cachedWords = [];
+    let uniformFit = 0;            // one mono size shared by every matted word in the fragment
     let mouseX = 0, mouseY = 0;
     let hasMouse = false;          // true once we have a prior cursor position to diff against
     let rafPending = false;
     let fxOn = true;               // hover interactions (material-shift + cursor-drag) on/off
 
     function cacheWords(frag) {
-      cachedWords = [...frag.querySelectorAll('.word')].map(el => {
+      const els = [...frag.querySelectorAll('.word')];
+      let totalWidth = 0, totalChars = 0, minBase = Infinity;
+      cachedWords = els.map(el => {
         const r = el.getBoundingClientRect();
         const base = parseFloat(getComputedStyle(el).fontSize);
-        // Largest mono size that keeps the word inside its locked width,
-        // capped at 0.85x the body size. (Position is read live in applyShift,
-        // so only the locked width + mono size are cached here.)
-        const fit = Math.min(
-          0.85 * base,
-          r.width / (Math.max(1, el.textContent.length) * MONO_RATIO)
-        );
-        return { el, w: r.width, fit };
+        totalWidth += r.width;
+        totalChars += Math.max(1, el.textContent.length);
+        if (base < minBase) minBase = base;
+        // (Position is read live in applyShift, so only the locked width is cached here.)
+        return { el, w: r.width };
       });
+      // One mono size for every word, as close to the body size as possible: the
+      // largest size whose TOTAL mono width matches the body text's total width
+      // (net reflow ~0), capped at the body size. Sizing off the whole fragment
+      // rather than per word keeps every matted word the same size as the others.
+      uniformFit = totalChars > 0
+        ? Math.min(minBase, totalWidth / (totalChars * MONO_RATIO))
+        : 0;
     }
 
     function resetWords() {
@@ -2327,8 +2620,8 @@
       }
       for (const w of cachedWords) {
         if (w.hit) {
-          w.el.style.width = w.w + 'px';            // lock width before the font swap
-          w.el.style.fontSize = w.fit + 'px';       // mono sized to fit that width
+          w.el.style.width = w.w + 'px';            // lock width before the font swap (no reflow)
+          w.el.style.fontSize = uniformFit + 'px';  // one shared size for every matted word
           w.el.classList.add('mat');
         } else {
           w.el.classList.remove('mat');
@@ -2366,6 +2659,128 @@
 
     canvasEl.addEventListener('mouseleave', () => { resetWords(); setHoverFrag(null); });
     window.addEventListener('resize', () => { resetWords(); setHoverFrag(null); });
+
+    /* ============================================================
+       10b. VIEWPORT RESIZE — keep the intro + canvas in the window
+       ------------------------------------------------------------
+       Positions are absolute (style.left/top), computed once at spawn, so
+       without this they never react to a resize. Behaviour:
+       - cross the 768px breakpoint -> reload into the right layout;
+       - grow -> leave existing content alone (new fragments already use the
+         new space via findPosition, which reads the live viewport);
+       - shrink -> keep only the two newest canvas fragments, scale them into
+         the smaller viewport and drop any that no longer fit; re-centre the
+         intro group and keep its background ghosts in view.
+       ============================================================ */
+    let prevW = window.innerWidth, prevH = window.innerHeight;
+    let resizeRepositionT = null;
+
+    // Move a fragment/ghost's home to (x,y): clamp into the viewport, update its
+    // placed[] rect (if tracked), drop any drag lean, and follow its fx overlay.
+    function moveHome(el, x, y, w, h, newW, newH, rect) {
+      x = Math.max(PAD, Math.min(Math.round(x), newW - w - PAD));
+      y = Math.max(PAD, Math.min(Math.round(y), newH - h - PAD));
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.transform = '';
+      followState.delete(el);
+      if (rect) { rect.x = x; rect.y = y; }
+      const fc = el.id && fxCanvases[el.id];
+      if (fc) { fc.style.left = x + 'px'; fc.style.top = y + 'px'; }
+    }
+
+    // Shrink: delete ONLY the fragments that now cross the window border — but
+    // never the two newest. The two newest are always kept; if either falls
+    // outside, it is re-placed into a free, non-overlapping spot (clamped in if
+    // the canvas is too full/small to find one — still never deleted).
+    function shrinkCanvas(newW, newH) {
+      const outside = r => r.x < 0 || r.y < 0 || r.x + r.w > newW || r.y + r.h > newH;
+      const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      const keep = new Set(order.slice(-2));   // the two newest
+
+      // 1. Remove the older fragments that no longer fit inside the window.
+      for (const id of [...order]) {
+        if (keep.has(id)) continue;
+        const rect = placed.find(r => r.id === id);
+        if (rect && outside(rect)) removeFragment(id);
+      }
+
+      // 2. Re-place any of the two newest that fell outside, so they fit without
+      //    overlapping (findPosition avoids every other placed rect and reads the
+      //    live viewport). Fall back to a clamp if no free spot exists.
+      for (const id of order.slice(-2)) {
+        const rect = placed.find(r => r.id === id);
+        const el = document.getElementById(id);
+        if (!rect || !el || !outside(rect)) continue;
+        const i = placed.indexOf(rect);
+        if (i >= 0) placed.splice(i, 1);          // hide own rect from findPosition
+        const pos = findPosition(rect.w, rect.h)
+          || { x: Math.max(PAD, Math.min(rect.x, newW - rect.w - PAD)),
+               y: Math.max(PAD, Math.min(rect.y, newH - rect.h - PAD)) };
+        placed.push(rect);
+        moveHome(el, pos.x, pos.y, rect.w, rect.h, newW, newH, rect);
+      }
+
+      // 3. The two newest take priority: delete any older fragment one of them
+      //    overlaps (e.g. when a newest was clamped in because the canvas was full).
+      const newest = [...keep].map(id => placed.find(r => r.id === id)).filter(Boolean);
+      for (const id of [...order]) {
+        if (keep.has(id)) continue;
+        const rect = placed.find(r => r.id === id);
+        if (rect && newest.some(n => hit(rect, n))) removeFragment(id);
+      }
+    }
+
+    // Re-centre the intro title/credit/"click to enter" group and keep the
+    // background ghosts in view (scaled + clamped on shrink, deleted if they
+    // can no longer fit). Mirrors the centring math in runIntro().
+    function repositionIntro(intro, newW, newH, oldW, oldH, shrank) {
+      const STACK_GAP = 12;
+      const title = intro.querySelector('.intro-title');
+      const credit = intro.querySelector('.intro-credit');
+      const enter = intro.querySelector('.intro-enter');
+      if (title) {
+        const tW = title.offsetWidth, tH = title.offsetHeight;
+        const cH = credit ? credit.offsetHeight : 0;
+        const ty = Math.max(PAD, Math.round((newH - tH - (credit ? STACK_GAP + cH : 0)) / 2));
+        title.style.left = Math.max(PAD, Math.round((newW - tW) / 2)) + 'px';
+        title.style.top = ty + 'px';
+        if (credit) {
+          const cW = credit.offsetWidth;
+          const cx = Math.max(PAD, Math.round((newW - cW) / 2));
+          const cy = ty + tH + STACK_GAP;
+          credit.style.left = cx + 'px';
+          credit.style.top = cy + 'px';
+          if (enter) {
+            enter.style.left = Math.round(cx + cW / 2 - enter.offsetWidth / 2) + 'px';
+            enter.style.top = Math.min(cy + credit.offsetHeight + 16, newH - 40 - PAD) + 'px';
+          }
+        }
+      }
+      // Background ghost fragments: the non-.intro-item children of #intro.
+      const sx = newW / oldW, sy = newH / oldH;
+      intro.querySelectorAll(':scope > div:not(.intro-item)').forEach(g => {
+        const w = g.offsetWidth, h = g.offsetHeight;
+        if (shrank && (w > newW - 2 * PAD || h > newH - 2 * PAD)) { g.remove(); return; }
+        moveHome(g, g.offsetLeft * sx, g.offsetTop * sy, w, h, newW, newH, null);
+      });
+    }
+
+    function onViewportResize() {
+      const newW = window.innerWidth, newH = window.innerHeight;
+      // Crossing the mobile/desktop breakpoint needs the other layout entirely.
+      if (window.matchMedia('(max-width: 768px)').matches !== MOBILE) { location.reload(); return; }
+      const shrank = newW < prevW || newH < prevH;
+      const intro = document.getElementById('intro');
+      if (intro) repositionIntro(intro, newW, newH, prevW, prevH, shrank);
+      else if (shrank) shrinkCanvas(newW, newH);   // grow: leave as-is
+      prevW = newW; prevH = newH;
+    }
+
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeRepositionT);
+      resizeRepositionT = setTimeout(onViewportResize, 100);
+    });
 
     // Clear every mono'd word whenever text is selected (any method, mouse moving
     // or not), so the selection highlight stays a smooth, single-font band.
@@ -2911,37 +3326,19 @@
       overlay.id = 'intro';
       document.body.appendChild(overlay);
 
-      // Material-shift hover (same as the fragments): words near the cursor swap
-      // to Overpass Mono, each sized to its locked width. Self-contained so it
-      // never touches the fragment physics; cleared when the overlay is removed.
-      let introWords = [];
-      let titleHoverReady = false;
-      function cacheIntroWords() {
-        const sel = titleHoverReady
-          ? '.intro-title .word, .intro-credit .word'
-          : '.intro-credit .word';
-        introWords = [...overlay.querySelectorAll(sel)]
-          .map(el => {
-            const r = el.getBoundingClientRect();
-            const base = parseFloat(getComputedStyle(el).fontSize);
-            const fit = Math.min(0.85 * base, r.width / (Math.max(1, el.textContent.length) * MONO_RATIO));
-            return { el, cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, fit };
-          });
-      }
-      overlay.addEventListener('mousemove', e => {
-        if (!fxOn) return;                         // respect the footer's ✦ toggle
-        for (const w of introWords) {
-          if (Math.hypot(w.cx - e.clientX, w.cy - e.clientY) < 40) {
-            w.el.style.width = w.w + 'px';         // lock width before the font swap
-            w.el.style.fontSize = w.fit + 'px';    // mono sized to fit that width
-            w.el.classList.add('mat');
-          } else {
-            w.el.classList.remove('mat');
-            w.el.style.width = '';
-            w.el.style.fontSize = '';
-          }
-        }
-      });
+      // 'Narkiss Asaf Regular' is used ONLY by .intro-title/.intro-credit, which
+      // aren't created until 3.5s in — so the browser doesn't even start fetching
+      // that OTF until then. Without this, the title is measured in the Tinos
+      // fallback (narrow) but the async html2canvas snapshot a moment later catches
+      // the wider Narkiss swap, so the materialize draws it horizontally compressed.
+      // Kick the download now (head start) and expose a readiness promise so we can
+      // measure + snapshot only once the real font is in.
+      const introFontReady = (document.fonts && document.fonts.load)
+        ? Promise.all([
+            document.fonts.load("88px 'Narkiss Asaf Regular'"),
+            document.fonts.load("18px 'Narkiss Asaf Regular'"),
+          ]).catch(() => {})
+        : Promise.resolve();
 
       // Measure an item offscreen, drop it at a free random spot (reusing the
       // fragment placement), then build it up with the same pixel-materialize the
@@ -2968,7 +3365,6 @@
           el.style.opacity = '';
           el.style.visibility = '';
           requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('shown')));
-          cacheIntroWords();
         };
 
         if (REDUCED_MOTION || typeof html2canvas !== 'function') { showNow(); return rect; }
@@ -2990,7 +3386,6 @@
                 el.style.visibility = '';
                 el.style.transition = 'none';        // already faded in via the build-up
                 requestAnimationFrame(() => { el.style.transition = ''; });
-                cacheIntroWords();                   // word centers are final now
               }
             });
           })
@@ -3004,12 +3399,14 @@
       const bgFragIds = Object.keys(FRAGMENTS).filter(id => FRAGMENTS[id].type === 'text');
       let bgTimer = null;
       const bgFragQueue = [];
-      const BG_MAX = 8;
+      const bgRects = [];
+      const BG_MAX = 3;
       function spawnBgFragment() {
         if (!document.getElementById('intro')) return;
         // Fade out and remove the oldest if at the limit.
         if (bgFragQueue.length >= BG_MAX) {
           const oldest = bgFragQueue.shift();
+          bgRects.shift();
           oldest.style.opacity = '0';
           setTimeout(() => oldest.remove(), 1200);
         }
@@ -3022,20 +3419,56 @@
         div.setAttribute('data-html2canvas-clone', 'true');
         div.setAttribute('aria-hidden', 'true');
         div.innerHTML = `<div class="fragment-caption">${id}</div>${frag.html}`;
-        // Wrap each word so it can scatter in Z during the blast (keeps tags intact).
+        // Wrap each word so it can scatter in Z during the blast.
+        // Walk text nodes only — never stringify innerHTML, which corrupts SVG attribute text.
+        function wrapBgWords(node) {
+          for (const child of [...node.childNodes]) {
+            if (child.nodeType === Node.TEXT_NODE) {
+              const parts = child.textContent.split(/(\s+)/);
+              const frag = document.createDocumentFragment();
+              for (const part of parts) {
+                if (part === '') continue;
+                if (/^\s+$/.test(part)) {
+                  frag.appendChild(document.createTextNode(part));
+                } else {
+                  const span = document.createElement('span');
+                  span.className = 'bg-word';
+                  span.textContent = part;
+                  frag.appendChild(span);
+                }
+              }
+              child.replaceWith(frag);
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+              wrapBgWords(child);
+            }
+          }
+        }
         div.querySelectorAll('p, .fragment-caption').forEach(p => {
           p.style.transformStyle = 'preserve-3d';
-          p.innerHTML = p.innerHTML.replace(/(^|<\/?[^>]+>|\s+)([^\s<]+)/g, '$1<span class="bg-word">$2</span>');
+          wrapBgWords(p);
         });
         // Make sure no links or interactive elements inside are keyboard-focusable during the starting screen.
         div.querySelectorAll('a, [tabindex]').forEach(el => el.setAttribute('tabindex', '-1'));
         overlay.insertBefore(div, overlay.firstChild);   // behind the title/credit
         const w = div.offsetWidth, h = div.offsetHeight;
-        const x = PAD + Math.random() * Math.max(0, window.innerWidth - w - 2 * PAD);
-        const y = PAD + Math.random() * Math.max(0, window.innerHeight - h - 2 * PAD);
+        const BG_GAP = 60;
+        const maxX = Math.max(0, window.innerWidth  - w - 2 * PAD);
+        const maxY = Math.max(0, window.innerHeight - h - 2 * PAD);
+        let x = PAD + Math.random() * maxX;
+        let y = PAD + Math.random() * maxY;
+        for (let i = 0; i < 120; i++) {
+          const cx = PAD + Math.random() * maxX;
+          const cy = PAD + Math.random() * maxY;
+          const hit = bgRects.some(r =>
+            cx < r.x + r.w + BG_GAP && cx + w + BG_GAP > r.x &&
+            cy < r.y + r.h + BG_GAP && cy + h + BG_GAP > r.y
+          );
+          if (!hit) { x = cx; y = cy; break; }
+        }
         // Position it immediately at its target coordinates
         div.style.left = x + 'px';
         div.style.top = y + 'px';
+        bgRects.push({ x, y, w, h });
         bgFragQueue.push(div);
 
         const runFallback = () => {
@@ -3093,6 +3526,8 @@
       // then "click to enter" at 7.5 s.
       let titleRect;
       let title;
+      let creditPos;
+      let creditRect;
       setTimeout(() => {
         title = document.createElement('div');
         title.className = 'intro-item intro-title';
@@ -3100,7 +3535,37 @@
         title.innerHTML = [...title.textContent].map(ch =>
           ch === ' ' ? ch : `<span class="word">${ch}</span>`
         ).join('');
-        titleRect = placeItem(title);
+
+        // Measure + snapshot only once Narkiss is loaded, so the measured width
+        // and the html2canvas snapshot agree (no compressed materialize). The
+        // preload above means this resolves effectively immediately on a warm load.
+        introFontReady.then(() => {
+          if (entered) return;   // intro skipped while the font was loading
+
+          // Pre-measure title + credit to vertically center the group on the left.
+          const tmp = document.createElement('div');
+          tmp.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;';
+          const cm = document.createElement('div');
+          cm.className = 'intro-item intro-credit';
+          cm.textContent = 'A project by Keyan Thanner';
+          wrapWords(cm);
+          tmp.appendChild(title.cloneNode(true));
+          tmp.appendChild(cm);
+          overlay.appendChild(tmp);
+          const titleH = tmp.children[0].offsetHeight;
+          const creditH = tmp.children[1].offsetHeight;
+          const titleW = tmp.children[0].offsetWidth;
+          const creditW = tmp.children[1].offsetWidth;
+          overlay.removeChild(tmp);
+
+          // Center the title + credit stack both horizontally and vertically.
+          const STACK_GAP = 12;
+          const titleX = Math.max(PAD, Math.round((window.innerWidth - titleW) / 2));
+          const creditX = Math.max(PAD, Math.round((window.innerWidth - creditW) / 2));
+          const ty = Math.max(PAD, Math.round((window.innerHeight - titleH) / 2));
+          creditPos = { x: creditX, y: window.innerHeight - creditH - PAD };
+          titleRect = placeItem(title, { x: titleX, y: ty });
+        });
       }, 3500);
 
       setTimeout(() => {
@@ -3108,7 +3573,7 @@
         credit.className = 'intro-item intro-credit';
         credit.textContent = 'A project by Keyan Thanner';
         wrapWords(credit);
-        placeItem(credit);
+        creditRect = placeItem(credit, creditPos);
       }, 5500);
 
       setTimeout(() => {
@@ -3116,18 +3581,24 @@
         const enter = document.createElement('div');
         enter.className = 'intro-item intro-enter';
         enter.textContent = 'click to enter';
-        const x = Math.min(titleRect.x, window.innerWidth - 160 - PAD);
+        // Measure offscreen so we can center it under the credit.
+        enter.style.cssText = 'position:absolute;left:-9999px;top:0;';
+        overlay.appendChild(enter);
+        const enterW = enter.offsetWidth;
+        overlay.removeChild(enter);
+        enter.style.cssText = '';
+        const centerX = titleRect.x + titleRect.w / 2;
+        const x = Math.round(centerX - enterW / 2);
         const y = Math.min(titleRect.y + titleRect.h + 16, window.innerHeight - 40 - PAD);
         placeItem(enter, { x, y });
-        // Title hover and click both activate once "click to enter" has appeared.
-        titleHoverReady = true;
-        cacheIntroWords();
-        title.addEventListener('click', enterSite, { once: true });
+        // Activating the title removes the "click to enter" hint at once, then enters.
+        const goEnter = () => { enter.remove(); enterSite(); };
+        title.addEventListener('click', goEnter, { once: true });
         // Keyboard: Enter or Space on the title also enters.
         title.setAttribute('tabindex', '0');
         title.setAttribute('role', 'button');
         title.addEventListener('keydown', e => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enterSite(); }
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goEnter(); }
         }, { once: true });
         title.focus();   // move focus to the title so it's immediately actionable
       }, 7500);
